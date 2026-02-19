@@ -1,0 +1,25 @@
+# Secrets
+.env
+
+# Downloads (can be large PDFs)
+downloads/
+*/downloads/
+
+#unnecessary folders
+briefs/
+# Logs (runtime output, not source)
+*.jsonl
+*/execution_log.jsonl
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+*/venv/
+
+# Browser sessions (Worktree B)
+browser_session/
+*/browser_session/
+
+# Rate limit state
+rate_limit_state.json

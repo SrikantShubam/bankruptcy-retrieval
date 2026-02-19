@@ -1,0 +1,6 @@
+# shared/requirements.txt
+# Dependencies required by shared/config.py, shared/gatekeeper.py, shared/telemetry.py
+# All three worktrees must install these in addition to their own requirements.
+
+httpx>=0.27.0
+python-dotenv>=1.0.0
