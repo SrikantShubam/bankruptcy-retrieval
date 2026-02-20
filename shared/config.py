@@ -164,7 +164,7 @@ MAX_PDF_BYTES: int = 52_428_800  # 50 MB
 COURTLISTENER_REQUESTS_PER_SECOND: int = 10
 
 # CourtListener base URL
-COURTLISTENER_BASE_URL: str = "https://www.courtlistener.com/api/rest/v3"
+COURTLISTENER_BASE_URL: str = "https://www.courtlistener.com/api/rest/v4"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
