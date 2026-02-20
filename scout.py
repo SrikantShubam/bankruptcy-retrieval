@@ -55,7 +55,7 @@ def build_kroll_url(company_name: str) -> str:
         clean = clean.replace(suffix, "")
     clean = clean.replace(" ", "").replace("&", "and")
     clean = clean.replace("'", "").replace("-", "")
-    return f"https://restructuring.ra.kroll.com/{clean}/Home"
+    return f"https://restructuring.ra.kroll.com/{clean}/"
 
 async def scout_kroll(page: Page, company_name: str, filing_year: int) -> List[Dict[str, Any]]:
     """Navigate Kroll, search for case, extract document metadata."""
@@ -64,24 +64,32 @@ async def scout_kroll(page: Page, company_name: str, filing_year: int) -> List[D
     
     try:
         url = build_kroll_url(company_name)
-        await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+        await page.goto(url, wait_until="networkidle", timeout=45000)
         
-        current_url = page.url
+        # Screenshot immediately — before ANY other logic
+        await page.screenshot(path=f"debug_kroll_{deal_id}_loaded.png")
         title = await page.title()
+        print(f"Kroll page title: {title}")
+        print(f"Kroll URL: {page.url}")
         
         if "404" in title or "not found" in title.lower():
             # Try portal search as fallback
             await page.goto("https://restructuring.ra.kroll.com/", 
-                            wait_until="domcontentloaded", timeout=30000)
-                            
-        await page.screenshot(path=f"debug_kroll_{deal_id}_loaded.png")
+                            wait_until="networkidle", timeout=45000)
+            
+        try:
+            await page.wait_for_selector(
+                "table, .docket-table, .document-list, h1, .case-title",
+                timeout=20000
+            )
+        except:
+            pass  # continue anyway, take screenshot to see what loaded
             
         doc_selectors = [
+            "li a:text('Documents')",
+            "a.nav-link:text('Documents')", 
+            "[role='tab']:text('Documents')",
             "a[href*='Documents']",
-            "a[href*='Docket']", 
-            "a:text('Documents')",
-            "a:text('Docket')",
-            "nav a[href*='docket' i]",
         ]
         for selector in doc_selectors:
             try:
@@ -90,7 +98,8 @@ async def scout_kroll(page: Page, company_name: str, filing_year: int) -> List[D
             except:
                 continue
                 
-        await page.wait_for_load_state("networkidle", timeout=20000)
+        await page.wait_for_load_state("networkidle", timeout=30000)
+        await page.screenshot(path=f"debug_kroll_{deal_id}_rendered.png")
         
         rows = await page.query_selector_all("tr, .docket-row, .document-row")
         
@@ -116,8 +125,12 @@ async def scout_kroll(page: Page, company_name: str, filing_year: int) -> List[D
                     })
                     
     except Exception as e:
-        await page.screenshot(path=f"debug_kroll_fail_{deal_id}.png")
+        print(f"Kroll Scout Error TYPE: {type(e).__name__}")
         print(f"Kroll Scout Error: {e}")
+        try:
+            await page.screenshot(path=f"debug_kroll_fail_{deal_id}.png")
+        except:
+            print("Screenshot also failed - page object is dead")
         
     return results
 

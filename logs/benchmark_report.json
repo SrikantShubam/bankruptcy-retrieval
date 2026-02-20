@@ -1,6 +1,6 @@
 {
   "worktree": "B",
-  "run_timestamp_utc": "2026-02-20T18:36:31.348+00:00",
+  "run_timestamp_utc": "2026-02-20T19:23:12.975+00:00",
   "deals_total": 10,
   "deals_already_processed": 5,
   "deals_active": 5,
@@ -17,7 +17,7 @@
   "api_efficiency": 0.0,
   "total_api_calls": 0,
   "total_llm_gatekeeper_calls": 0,
-  "total_runtime_seconds": 142.4,
+  "total_runtime_seconds": 202.86,
   "already_processed_correctly_excluded": 5,
   "already_processed_incorrectly_processed": 0
 }
