@@ -46,16 +46,39 @@ async def extract_metadata_from_row(row_element, docket_title_selector: str, dat
     except Exception:
         return {}
 
+KROLL_CASE_SLUGS = {
+    "WeWork": "WeWork",
+    "Rite Aid": "RiteAid", 
+    "SVB Financial Group": "SVBFinancial",
+    "Enviva": "Enviva",
+    "Ligado Networks": "LigadoNetworks",
+    "Tehum Care Services": "TehumCare",
+    "Chicken Soup for the Soul Entertainment": "ChickenSoupfortheSoulEntertainment",
+    "JOANN": "JOANN",
+    "Bed Bath & Beyond": "BedBathBeyond",
+    "Spirit Airlines": "SpiritAirlines",
+    "Big Lots": "BigLots",
+    "Tupperware Brands": "Tupperware",
+    "Red Lobster": "RedLobster",
+    "Vice Media": "ViceMedia",
+    "Diamond Sports Group": "DiamondSportsGroup",
+    "Avaya": "Avaya",
+    "Cyxtera Technologies": "Cyxtera",
+    "Core Scientific": "CoreScientific",
+    "Celsius Network": "CelsiusNetwork",
+}
+
 def build_kroll_url(company_name: str) -> str:
-    clean = company_name
-    for suffix in [" Inc", " LLC", " Corp", " Group", 
-                   " Holdings", " Financial", " Technologies",
-                   " Entertainment", " Brands", " Network",
-                   " Services", " Company"]:
-        clean = clean.replace(suffix, "")
-    clean = clean.replace(" ", "").replace("&", "and")
-    clean = clean.replace("'", "").replace("-", "")
-    return f"https://restructuring.ra.kroll.com/{clean}/"
+    slug = KROLL_CASE_SLUGS.get(company_name)
+    if not slug:
+        # Fallback slug guessing
+        clean = company_name
+        for suffix in [" Inc", " LLC", " Corp", " Group", " Holdings",
+                       " Financial", " Technologies", " Entertainment",
+                       " Brands", " Network", " Services", " Company"]:
+            clean = clean.replace(suffix, "")
+        slug = clean.replace(" ", "").replace("&", "").replace("'", "")
+    return f"https://restructuring.ra.kroll.com/{slug}/"
 
 async def scout_kroll(page: Page, company_name: str, filing_year: int) -> List[Dict[str, Any]]:
     """Navigate Kroll, search for case, extract document metadata."""
@@ -72,36 +95,23 @@ async def scout_kroll(page: Page, company_name: str, filing_year: int) -> List[D
         print(f"Kroll page title: {title}")
         print(f"Kroll URL: {page.url}")
         
-        if "404" in title or "not found" in title.lower():
-            # Try portal search as fallback
-            await page.goto("https://restructuring.ra.kroll.com/", 
-                            wait_until="networkidle", timeout=45000)
+        # Check we're on a real case page, not the generic listing
+        if "restructuring-administration-cases" in page.url or \
+           "Restructuring Administration Cases" in await page.title():
+            # Slug didn't match, skip this case
+            return []
             
+        # Click the Docket tab from the left sidebar
         try:
-            await page.wait_for_selector(
-                "table, .docket-table, .document-list, h1, .case-title",
-                timeout=20000
-            )
-        except:
-            pass  # continue anyway, take screenshot to see what loaded
+            await page.click("a:text('Docket') >> visible=true", timeout=10000)
+            await page.wait_for_load_state("networkidle", timeout=20000)
+            await page.screenshot(path=f"debug_kroll_{deal_id}_docket.png")
+        except Exception as e:
+            print(f"Failed to click Docket tab: {e}")
+            await page.screenshot(path=f"debug_kroll_docket_fail_{deal_id}.png")
+            return []
             
-        doc_selectors = [
-            "li a:text('Documents')",
-            "a.nav-link:text('Documents')", 
-            "[role='tab']:text('Documents')",
-            "a[href*='Documents']",
-        ]
-        for selector in doc_selectors:
-            try:
-                await page.click(selector, timeout=5000)
-                break
-            except:
-                continue
-                
-        await page.wait_for_load_state("networkidle", timeout=30000)
-        await page.screenshot(path=f"debug_kroll_{deal_id}_rendered.png")
-        
-        rows = await page.query_selector_all("tr, .docket-row, .document-row")
+        rows = await page.query_selector_all("tr")
         
         for row in rows:
             text = await row.inner_text()
