@@ -93,14 +93,9 @@ async def scout_node(state: PipelineState) -> PipelineState:
     
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            # Phase 1: Search for dockets using the search endpoint (more flexible)
+            # Phase 1: Search for dockets using the V4 search endpoint
             search_params = {
                 "q": company_name,
-                "date_filed__gte": f"{filing_year}-01-01",
-                "date_filed__lte": f"{filing_year}-12-31",
-                "format": "json",
-                "limit": 5,
-                "type": "docket",
             }
             
             response = await client.get(
@@ -115,26 +110,6 @@ async def scout_node(state: PipelineState) -> PipelineState:
                 results = search_data.get("results", [])
                 
                 if not results:
-                    # No docket found - try without court filter
-                    search_params_no_court = {
-                        "q": company_name,
-                        "date_filed__gte": f"{filing_year}-01-01",
-                        "date_filed__lte": f"{filing_year}-12-31",
-                        "format": "json",
-                        "limit": 5,
-                        "type": "docket",
-                    }
-                    response = await client.get(
-                        f"{COURTLISTENER_BASE_URL}/search/",
-                        params=search_params_no_court,
-                        headers=headers
-                    )
-                    api_calls_made += 1
-                    if response.status_code == 200:
-                        search_data = response.json()
-                        results = search_data.get("results", [])
-                
-                if not results:
                     return {
                         **state,
                         "search_attempts": search_attempts,
@@ -142,10 +117,13 @@ async def scout_node(state: PipelineState) -> PipelineState:
                         "api_calls_used": state.get("api_calls_used", 0) + api_calls_made
                     }
                 
-                # Get first matching docket
-                result = results[0]
-                docket = result.get("docket", {})
-                docket_id = docket.get("id")
+                # Get first matching result with a docket_id
+                docket_id = None
+                for result in results:
+                    # V4 search results have docket_id directly
+                    if result.get("docket_id"):
+                        docket_id = result.get("docket_id")
+                        break
                 
                 if not docket_id:
                     return {
