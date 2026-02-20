@@ -115,36 +115,52 @@ async def scout_node(state: PipelineState) -> PipelineState:
                     results = search_data.get("results", [])
                     
                     if results:
-                        # Found RECAP documents - extract relevant info
+                        # Found RECAP documents - extract relevant info from recap_documents array
                         for result in results:
-                            # Get the document info
-                            description = result.get("description", "")
-                            if not description:
-                                continue
-                            
-                            # Get download URL if available
-                            pdf_url = result.get("download_url")
-                            
                             # Get case name and date
                             case_name = result.get("caseName", company_name)
                             date_filed = result.get("dateFiled", "")[:10] if result.get("dateFiled") else ""
                             
-                            # Skip if no PDF URL available
-                            if not pdf_url:
-                                continue
+                            # Get recap documents from the result
+                            recap_docs = result.get("recap_documents", [])
                             
-                            candidate = {
-                                "deal_id": deal_id,
-                                "source": "courtlistener",
-                                "docket_entry_id": str(result.get("id", "")),
-                                "docket_title": description or case_name,
-                                "filing_date": date_filed,
-                                "attachment_descriptions": [],
-                                "resolved_pdf_url": pdf_url,
-                                "api_calls_consumed": api_calls_made,
-                            }
-                            candidates.append(candidate)
-                            break  # Found one, stop
+                            for doc in recap_docs:
+                                # Check if document is available
+                                if not doc.get("is_available", False):
+                                    continue
+                                
+                                # Get description
+                                description = doc.get("description", "")
+                                if not description:
+                                    description = doc.get("short_description", "")
+                                
+                                # Construct PDF URL from filepath_local
+                                # Format: https://storage.courtlistener.com/{filepath_local}
+                                filepath = doc.get("filepath_local", "")
+                                if filepath:
+                                    pdf_url = f"https://storage.courtlistener.com/{filepath}"
+                                else:
+                                    continue
+                                
+                                # Skip if no PDF URL available
+                                if not pdf_url:
+                                    continue
+                                
+                                candidate = {
+                                    "deal_id": deal_id,
+                                    "source": "courtlistener",
+                                    "docket_entry_id": str(doc.get("docket_entry_id", "")),
+                                    "docket_title": description or case_name,
+                                    "filing_date": date_filed,
+                                    "attachment_descriptions": [],
+                                    "resolved_pdf_url": pdf_url,
+                                    "api_calls_consumed": api_calls_made,
+                                }
+                                candidates.append(candidate)
+                                break  # Found one, stop
+                            
+                            if candidates:
+                                break  # Found candidate, stop results
                         
                         if candidates:
                             break  # Found candidate, stop keywords
