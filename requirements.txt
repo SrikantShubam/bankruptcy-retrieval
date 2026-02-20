@@ -1,0 +1,6 @@
+camoufox>=0.4
+nodriver>=0.35
+playwright>=1.44
+aiofiles>=23.0
+python-dotenv
+httpx

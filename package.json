@@ -1,0 +1,20 @@
+{
+  "dependencies": {
+    "playwright": "^1.58.2"
+  },
+  "name": "worktree-b",
+  "version": "1.0.0",
+  "description": "This folder contains the implementation for Worktree B of the bankruptcy document retrieval pipeline. It uses Camoufox and nodriver to scrape claims agent domains while evading bot mitigation (Cloudflare).",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
