@@ -12,12 +12,17 @@ token = os.environ.get('COURTLISTENER_API_TOKEN', 'NOT_FOUND')
 
 async def test():
     async with httpx.AsyncClient() as c:
-        # Try without court filter - just search for WeWork
+        # Test RECAP search with type "r"
         r = await c.get(
             'https://www.courtlistener.com/api/rest/v4/search/',
             headers={'Authorization': f'Token {token}'},
             params={
-                'q': 'WeWork',
+                'q': 'WeWork first day declaration',
+                'type': 'r',  # RECAP documents
+                'filed_after': '2023-01-01',
+                'filed_before': '2023-12-31',
+                'order_by': 'score desc',
+                'page_size': 5,
             },
             timeout=30.0
         )

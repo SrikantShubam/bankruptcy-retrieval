@@ -66,11 +66,11 @@ async def exclusion_check_node(state: PipelineState) -> PipelineState:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Scout Node - Uses CourtListener API directly
+# Scout Node - Uses CourtListener V4 Search API (RECAP documents)
 # ─────────────────────────────────────────────────────────────────────────────
 
 async def scout_node(state: PipelineState) -> PipelineState:
-    """Scout agent searches for documents using CourtListener API."""
+    """Scout agent searches for documents using CourtListener V4 Search API with RECAP type."""
     import httpx
     from shared.config import COURTLISTENER_API_TOKEN, COURTLISTENER_BASE_URL
     
@@ -78,14 +78,10 @@ async def scout_node(state: PipelineState) -> PipelineState:
     deal_id = deal.get("deal_id", "")
     company_name = deal.get("company_name", "")
     filing_year = deal.get("filing_year", 2023)
-    court = deal.get("court")
-    
-    # Convert court to slug
-    court_slug = get_court_slug(court)
     
     headers = {}
     if COURTLISTENER_API_TOKEN:
-        headers["Authorization"] = f"Token {COURTLISTENER_API_TOKEN}"
+        headers["Authorization"] = f"Token { COURTLISTENER_API_TOKEN}"
     
     candidates = []
     api_calls_made = 0
@@ -93,95 +89,66 @@ async def scout_node(state: PipelineState) -> PipelineState:
     
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            # Phase 1: Search for dockets using the V4 search endpoint
-            search_params = {
-                "q": company_name,
-            }
-            
-            response = await client.get(
-                f"{COURTLISTENER_BASE_URL}/search/",
-                params=search_params,
-                headers=headers
-            )
-            api_calls_made += 1
-            
-            if response.status_code == 200:
-                search_data = response.json()
-                results = search_data.get("results", [])
+            # Search for RECAP documents directly using type "r"
+            # Iterate through priority keywords - stop at first match
+            for keyword in PRIORITY_KEYWORDS[:MAX_KEYWORD_QUERIES_PER_DEAL]:
+                search_query = f"{company_name} {keyword}"
                 
-                if not results:
-                    return {
-                        **state,
-                        "search_attempts": search_attempts,
-                        "candidates": [],
-                        "api_calls_used": state.get("api_calls_used", 0) + api_calls_made
-                    }
+                search_params = {
+                    "q": search_query,
+                    "type": "r",  # RECAP documents
+                    "filed_after": f"{filing_year}-01-01",
+                    "filed_before": f"{filing_year}-12-31",
+                    "order_by": "score desc",
+                    "page_size": 5,
+                }
                 
-                # Get first matching result with a docket_id
-                docket_id = None
-                for result in results:
-                    # V4 search results have docket_id directly
-                    if result.get("docket_id"):
-                        docket_id = result.get("docket_id")
-                        break
+                response = await client.get(
+                    f"{COURTLISTENER_BASE_URL}/search/",
+                    params=search_params,
+                    headers=headers
+                )
+                api_calls_made += 1
                 
-                if not docket_id:
-                    return {
-                        **state,
-                        "search_attempts": search_attempts,
-                        "candidates": [],
-                        "api_calls_used": state.get("api_calls_used", 0) + api_calls_made
-                    }
-                
-                # Phase 2: Search docket entries with priority keywords
-                for keyword in PRIORITY_KEYWORDS[:MAX_KEYWORD_QUERIES_PER_DEAL]:
-                    entries_response = await client.get(
-                        f"{COURTLISTENER_BASE_URL}/docket-entries/",
-                        params={
-                            "docket": docket_id,
-                            "description__icontains": keyword,
-                            "format": "json",
-                            "limit": 10,
-                            "order_by": "-date_filed",
-                        },
-                        headers=headers
-                    )
-                    api_calls_made += 1
+                if response.status_code == 200:
+                    search_data = response.json()
+                    results = search_data.get("results", [])
                     
-                    if entries_response.status_code == 200:
-                        entries_data = entries_response.json()
-                        for entry in entries_data.get("results", []):
-                            description = entry.get("description", "")
+                    if results:
+                        # Found RECAP documents - extract relevant info
+                        for result in results:
+                            # Get the document info
+                            description = result.get("description", "")
                             if not description:
                                 continue
                             
-                            # Get PDF URL from recap documents
-                            pdf_url = None
-                            recap_docs = entry.get("recap_documents", [])
-                            for doc in recap_docs:
-                                if doc.get("pdf_url"):
-                                    pdf_url = doc.get("pdf_url")
-                                    break
+                            # Get download URL if available
+                            pdf_url = result.get("download_url")
                             
+                            # Get case name and date
+                            case_name = result.get("caseName", company_name)
+                            date_filed = result.get("dateFiled", "")[:10] if result.get("dateFiled") else ""
+                            
+                            # Skip if no PDF URL available
                             if not pdf_url:
                                 continue
                             
                             candidate = {
                                 "deal_id": deal_id,
                                 "source": "courtlistener",
-                                "docket_entry_id": str(entry.get("id", "")),
-                                "docket_title": description,
-                                "filing_date": entry.get("date_filed", "")[:10] if entry.get("date_filed") else "",
+                                "docket_entry_id": str(result.get("id", "")),
+                                "docket_title": description or case_name,
+                                "filing_date": date_filed,
                                 "attachment_descriptions": [],
                                 "resolved_pdf_url": pdf_url,
                                 "api_calls_consumed": api_calls_made,
                             }
                             candidates.append(candidate)
-                            break  # Found one, stop searching
+                            break  # Found one, stop
                         
                         if candidates:
                             break  # Found candidate, stop keywords
-                
+    
     except Exception as e:
         logger.warning(f"Scout error for {deal_id}: {e}")
     
