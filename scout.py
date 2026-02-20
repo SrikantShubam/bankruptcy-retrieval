@@ -1,13 +1,15 @@
 import os
+import json
 import random
 import asyncio
-from typing import List, Dict, Any
+import asyncio
+from typing import List, Dict, Any, Tuple
 from camoufox.async_api import AsyncCamoufox
-from playwright.async_api import Page, TimeoutError
+from playwright.async_api import Page, TimeoutError, BrowserContext
 
 from shared.telemetry import TelemetryLogger
 from session_manager import (
-    get_or_create_page,
+    safe_new_page,
     detect_cloudflare_challenge,
     wait_for_cloudflare_bypass
 )
@@ -47,31 +49,49 @@ async def extract_metadata_from_row(row_element, docket_title_selector: str, dat
 async def scout_kroll(page: Page, company_name: str, filing_year: int) -> List[Dict[str, Any]]:
     """Navigate Kroll, search for case, extract document metadata."""
     results = []
+    deal_id = company_name.lower().replace(" ", "-").replace(",", "").replace(".", "")
     
     try:
-        await page.goto("https://www.kroll.com/en/services/restructuring/cases", timeout=45000)
+        url = f"https://www.kroll.com/en/services/restructuring/cases/{deal_id}"
+        response = await page.goto(url, timeout=45000)
         
-        if await detect_cloudflare_challenge(page):
-            bypassed = await wait_for_cloudflare_bypass(page)
-            if not bypassed:
-                return []
+        if response and response.status == 404:
+            await page.goto("https://www.kroll.com/en/services/restructuring/cases", timeout=45000)
+            
+            if await detect_cloudflare_challenge(page):
+                bypassed = await wait_for_cloudflare_bypass(page)
+                if not bypassed:
+                    return []
 
-        # Wait for search input
-        search_input = await page.wait_for_selector(KROLL_SELECTORS["search_input"], timeout=15000)
-        
-        # Humanize typing
-        await search_input.click()
-        for char in company_name:
-            await page.keyboard.type(char)
-            await asyncio.sleep(random.uniform(0.08, 0.15))
+            await page.wait_for_load_state("networkidle", timeout=30000)
+            
+            selectors_to_try = [
+                "input[aria-label*='case' i]",
+                "input[aria-label*='search' i][aria-label*='case' i]", 
+                "input#case-search",
+                "input[name*='case']",
+                ".case-search input",
+                ".restructuring-search input",
+            ]
+            
+            for selector in selectors_to_try:
+                element = page.locator(selector).first
+                if await element.is_visible():
+                    await element.click()
+                    for char in company_name:
+                        await page.keyboard.type(char)
+                        await asyncio.sleep(random.uniform(0.08, 0.15))
+                    break
+            else:
+                await page.screenshot(path=f"debug_kroll_{deal_id}.png")
+                raise ValueError(f"Could not find Kroll case search input for {company_name}")
 
-        # Wait for results and click first match
-        # Using a broad selector for results
-        try:
-            case_results = await page.wait_for_selector(KROLL_SELECTORS["case_result"], timeout=10000)
-            await case_results.click()
-        except TimeoutError:
-            return [] # Not found
+            # Wait for results and click first match
+            try:
+                case_results = await page.wait_for_selector(KROLL_SELECTORS["case_result"], timeout=10000)
+                await case_results.click()
+            except TimeoutError:
+                return [] # Not found
             
         # On case page, wait for document table
         await page.wait_for_selector(KROLL_SELECTORS["document_table_rows"], timeout=15000)
@@ -93,6 +113,7 @@ async def scout_kroll(page: Page, company_name: str, filing_year: int) -> List[D
                     results.append(meta)
                     
     except Exception as e:
+        await page.screenshot(path=f"debug_kroll_fail_{deal_id}.png")
         print(f"Kroll Scout Error: {e}")
         
     return results
@@ -222,7 +243,7 @@ async def scout_epiq_nodriver_fallback(company_name: str) -> List[Dict[str, Any]
         
     return results
 
-async def scout_with_fallback(browser: AsyncCamoufox, deal: Dict[str, Any]) -> List[Dict[str, Any]]:
+async def scout_with_fallback(browser: BrowserContext, deal: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], BrowserContext]:
     """
     Orchestrates the fallback cascade:
     1. Try claims agent browser (Camoufox)
@@ -233,7 +254,7 @@ async def scout_with_fallback(browser: AsyncCamoufox, deal: Dict[str, Any]) -> L
     filing_year = deal["filing_year"]
     claims_agent = deal.get("claims_agent", "").lower()
     
-    page = await get_or_create_page(browser)
+    page, browser = await safe_new_page(browser)
     results = []
     
     # 1. Claims Agent Switch
@@ -255,9 +276,7 @@ async def scout_with_fallback(browser: AsyncCamoufox, deal: Dict[str, Any]) -> L
             print("Falling back to nodriver for Epiq...")
             results = await scout_epiq_nodriver_fallback(company_name)
             
-    # Close tab
-    if "about:blank" not in page.url:
-        await page.close()
+    # Do NOT close tab, safe_new_page keeps 3 tabs limit and closing inside exception loop crashes Playwright
             
     # 2. CourtListener RECAP API Fallback (mocked for Worktree B specific scope)
     if not results:
@@ -275,4 +294,4 @@ async def scout_with_fallback(browser: AsyncCamoufox, deal: Dict[str, Any]) -> L
         r["deal_id"] = deal["deal_id"]
         r["api_calls_consumed"] = 1 # Approximating browser action as 1 call metric
         
-    return results
+    return results, browser

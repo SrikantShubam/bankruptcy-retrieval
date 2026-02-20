@@ -26,8 +26,9 @@ async def launch_browser():
     Settings:
       - headless=True
       - humanize=True  (realistic mouse movement simulation)
-      - persistent_context_dir=BROWSER_SESSION_DIR
-    Return the browser object.
+      - user_data_dir=BROWSER_SESSION_DIR
+      - persistent_context=True
+    Return the browser object (which is a BrowserContext).
     """
     os.makedirs(BROWSER_SESSION_DIR, exist_ok=True)
     
@@ -37,7 +38,8 @@ async def launch_browser():
     camoufox_ctx = AsyncCamoufox(
         headless=True,
         humanize=True,
-        persistent_context_dir=BROWSER_SESSION_DIR
+        user_data_dir=BROWSER_SESSION_DIR,
+        persistent_context=True
     )
     browser = await camoufox_ctx.__aenter__()
     
@@ -57,25 +59,27 @@ async def launch_browser():
     
     return browser
 
-async def get_or_create_page(browser: AsyncCamoufox) -> Page:
+async def safe_new_page(browser: BrowserContext) -> tuple[Page, BrowserContext]:
     """
-    Reuse existing page if healthy. Open new tab if needed.
-    Never exceed 3 open tabs simultaneously.
+    Safely create a new page, keeping up to 3 pages open.
+    If the browser context is dead, relaunch it, load cookies, and return the new page and context.
     """
-    pages = browser.pages
-    if not pages:
-        return await browser.new_page()
-        
-    # Find a blank/unused page if one exists
-    for p in pages:
-        if p.url == "about:blank":
-            return p
-            
-    # If we have 3 or more open tabs, close the oldest one (index 0)
-    if len(pages) >= 3:
-        await pages[0].close()
-        
-    return await browser.new_page()
+    try:
+        pages = browser.pages
+        # If we have 3 or more open tabs, close the oldest one (index 0)
+        if len(pages) >= 3:
+            try:
+                await pages[0].close()
+            except Exception:
+                pass
+        page = await browser.new_page()
+        return page, browser
+    except Exception as e:
+        print(f"Browser context dead ({e}), relaunching...")
+        new_browser = await launch_browser()
+        await load_cookies(new_browser)
+        page = await new_browser.new_page()
+        return page, new_browser
 
 async def save_cookies(context: BrowserContext):
     """Save cookies to BROWSER_SESSION_DIR/cookies.json after every successful page load."""
@@ -101,7 +105,7 @@ async def session_health_check(browser: AsyncCamoufox, deals_processed: int) -> 
     Navigate to https://www.kroll.com/ and verify title loads.
     Returns (browser_instance, "ok" or "relaunched").
     """
-    page = await get_or_create_page(browser)
+    page, browser = await safe_new_page(browser)
     status = "ok"
     
     try:
@@ -113,15 +117,19 @@ async def session_health_check(browser: AsyncCamoufox, deals_processed: int) -> 
         status = "relaunched"
     finally:
         if "about:blank" not in page.url:
-            await page.close()
+            try:
+                await page.close()
+            except Exception:
+                pass
             
     if status == "relaunched":
-        await browser.close()
+        if hasattr(browser, "_camoufox_ctx"):
+            await browser._camoufox_ctx.__aexit__(None, None, None)
+        else:
+            await browser.close()
         browser = await launch_browser()
         # Attempt to reload the cookies on the new context
-        contexts = browser.contexts
-        if contexts:
-            await load_cookies(contexts[0])
+        await load_cookies(browser)
             
     # Since TelemetryLogger doesn't natively expose custom EVENT types, we write standard python log or stdout
     print(json.dumps({

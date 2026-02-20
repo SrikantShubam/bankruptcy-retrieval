@@ -1,3 +1,4 @@
+import sys
 import asyncio
 import json
 import logging
@@ -12,7 +13,7 @@ from shared.telemetry import TelemetryLogger
 from config import EXCLUDED_SET
 from session_manager import (
     launch_browser,
-    get_or_create_page,
+    safe_new_page,
     session_health_check,
     save_cookies
 )
@@ -49,6 +50,10 @@ async def pipeline_run():
             
         active_deals.append(deal)
 
+    if "--test" in sys.argv:
+        print("Running in TEST mode: Limiting to first 5 active deals.")
+        active_deals = active_deals[:5]
+
     if not active_deals:
         print("No active deals found.")
         return
@@ -74,7 +79,7 @@ async def pipeline_run():
                 browser, status = await session_health_check(browser, deals_processed)
 
             # 4. Scout for Candidate Documents
-            candidates = await scout_with_fallback(browser, deal)
+            candidates, browser = await scout_with_fallback(browser, deal)
             
             # Emit scout telemetry
             logger.log_scout_query(
@@ -115,14 +120,14 @@ async def pipeline_run():
                 pdf_url = download_candidate.get("resolved_pdf_url")
                 
                 # Fetch
-                page = await get_or_create_page(browser)
+                page, browser = await safe_new_page(browser)
                 
                 # We need to navigate to the source page potentially, but download_via_browser uses JS injection.
                 fetch_res = await download_via_browser(page, pdf_url, deal["deal_id"])
                 
                 # If fail, try httpx fallback
                 if not fetch_res["success"]:
-                    context_cookies = await browser.contexts[0].cookies() if browser.contexts else []
+                    context_cookies = await browser.cookies()
                     fetch_res = await download_via_httpx_fallback(pdf_url, deal["deal_id"], context_cookies)
 
                 logger.log_fetch_result(
@@ -140,8 +145,7 @@ async def pipeline_run():
                     local_file_path = fetch_res["local_file_path"]
                     
                     # Persist cookies
-                    if browser.contexts:
-                        await save_cookies(browser.contexts[0])
+                    await save_cookies(browser)
                 else:
                     pipeline_status = "FETCH_FAILED"
 
