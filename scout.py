@@ -46,71 +46,74 @@ async def extract_metadata_from_row(row_element, docket_title_selector: str, dat
     except Exception:
         return {}
 
+def build_kroll_url(company_name: str) -> str:
+    clean = company_name
+    for suffix in [" Inc", " LLC", " Corp", " Group", 
+                   " Holdings", " Financial", " Technologies",
+                   " Entertainment", " Brands", " Network",
+                   " Services", " Company"]:
+        clean = clean.replace(suffix, "")
+    clean = clean.replace(" ", "").replace("&", "and")
+    clean = clean.replace("'", "").replace("-", "")
+    return f"https://restructuring.ra.kroll.com/{clean}/Home"
+
 async def scout_kroll(page: Page, company_name: str, filing_year: int) -> List[Dict[str, Any]]:
     """Navigate Kroll, search for case, extract document metadata."""
     results = []
     deal_id = company_name.lower().replace(" ", "-").replace(",", "").replace(".", "")
     
     try:
-        url = f"https://www.kroll.com/en/services/restructuring/cases/{deal_id}"
-        response = await page.goto(url, timeout=45000)
+        url = build_kroll_url(company_name)
+        await page.goto(url, wait_until="domcontentloaded", timeout=30000)
         
-        if response and response.status == 404:
-            await page.goto("https://www.kroll.com/en/services/restructuring/cases", timeout=45000)
+        current_url = page.url
+        title = await page.title()
+        
+        if "404" in title or "not found" in title.lower():
+            # Try portal search as fallback
+            await page.goto("https://restructuring.ra.kroll.com/", 
+                            wait_until="domcontentloaded", timeout=30000)
+                            
+        await page.screenshot(path=f"debug_kroll_{deal_id}_loaded.png")
             
-            if await detect_cloudflare_challenge(page):
-                bypassed = await wait_for_cloudflare_bypass(page)
-                if not bypassed:
-                    return []
-
-            await page.wait_for_load_state("networkidle", timeout=30000)
-            
-            selectors_to_try = [
-                "input[aria-label*='case' i]",
-                "input[aria-label*='search' i][aria-label*='case' i]", 
-                "input#case-search",
-                "input[name*='case']",
-                ".case-search input",
-                ".restructuring-search input",
-            ]
-            
-            for selector in selectors_to_try:
-                element = page.locator(selector).first
-                if await element.is_visible():
-                    await element.click()
-                    for char in company_name:
-                        await page.keyboard.type(char)
-                        await asyncio.sleep(random.uniform(0.08, 0.15))
-                    break
-            else:
-                await page.screenshot(path=f"debug_kroll_{deal_id}.png")
-                raise ValueError(f"Could not find Kroll case search input for {company_name}")
-
-            # Wait for results and click first match
+        doc_selectors = [
+            "a[href*='Documents']",
+            "a[href*='Docket']", 
+            "a:text('Documents')",
+            "a:text('Docket')",
+            "nav a[href*='docket' i]",
+        ]
+        for selector in doc_selectors:
             try:
-                case_results = await page.wait_for_selector(KROLL_SELECTORS["case_result"], timeout=10000)
-                await case_results.click()
-            except TimeoutError:
-                return [] # Not found
-            
-        # On case page, wait for document table
-        await page.wait_for_selector(KROLL_SELECTORS["document_table_rows"], timeout=15000)
-        rows = await page.query_selector_all(KROLL_SELECTORS["document_table_rows"])
+                await page.click(selector, timeout=5000)
+                break
+            except:
+                continue
+                
+        await page.wait_for_load_state("networkidle", timeout=20000)
+        
+        rows = await page.query_selector_all("tr, .docket-row, .document-row")
         
         for row in rows:
-            # Check text for First Day or DIP
             text = await row.inner_text()
             text_lower = text.lower()
-            if "first day" in text_lower or "dip motion" in text_lower or "capital structure" in text_lower:
-                meta = await extract_metadata_from_row(row, "td:nth-child(3)", "td:nth-child(1)")
-                if meta.get("resolved_pdf_url"):
+            if any(kw in text_lower for kw in [
+                "first day", "dip motion", "debtor in possession",
+                "cash collateral", "declaration in support"
+            ]):
+                link = await row.query_selector("a[href*='.pdf'], a[href*='document']")
+                if link:
+                    href = await link.get_attribute("href")
                     # Kroll links might be relative
-                    url = meta["resolved_pdf_url"]
-                    if url.startswith("/"):
-                        url = f"https://cases.ra.kroll.com{url}"
-                    meta["resolved_pdf_url"] = url
-                    meta["source"] = "kroll"
-                    results.append(meta)
+                    if href.startswith("/"):
+                        href = f"https://restructuring.ra.kroll.com{href}"
+                    results.append({
+                        "docket_title": text.strip()[:200],
+                        "filing_date": None,
+                        "resolved_pdf_url": href,
+                        "attachment_descriptions": [],
+                        "source": "kroll"
+                    })
                     
     except Exception as e:
         await page.screenshot(path=f"debug_kroll_fail_{deal_id}.png")
@@ -126,16 +129,14 @@ async def scout_stretto(page: Page, company_name: str, filing_year: int) -> List
     try:
         # Try direct navigation
         url = f"https://cases.stretto.com/{slug}/"
-        response = await page.goto(url, timeout=30000)
+        response = await page.goto(url, wait_until="domcontentloaded", timeout=30000)
         
         if response and response.status == 404:
             # Fallback to search
             url = f"https://cases.stretto.com/?s={company_name}"
-            await page.goto(url, timeout=30000)
+            await page.goto(url, wait_until="domcontentloaded", timeout=30000)
             
-            # Click first result if available (simplified for now)
-            # Would need exact Stretto search result DOM structure here
-            # Assuming it routes to the slug page eventually
+        await page.screenshot(path=f"debug_stretto_{slug}_loaded.png")
             
         if await detect_cloudflare_challenge(page):
             await wait_for_cloudflare_bypass(page)
@@ -157,6 +158,7 @@ async def scout_stretto(page: Page, company_name: str, filing_year: int) -> List
                     "source": "stretto"
                 })
     except Exception as e:
+        await page.screenshot(path=f"debug_stretto_fail_{slug}.png")
         print(f"Stretto Scout Error: {e}")
         
     return results
@@ -164,25 +166,19 @@ async def scout_stretto(page: Page, company_name: str, filing_year: int) -> List
 async def scout_epiq(page: Page, company_name: str, filing_year: int) -> List[Dict[str, Any]]:
     """Navigate Epiq docket. (nodriver fallback handled in orchestrator)"""
     results = []
+    slug = company_name.lower().replace(" ", "-").replace(",", "").replace(".", "")
     
     try:
-        # Epiq URLs often require the exact case name slug or search
-        await page.goto("https://dm.epiq11.com", timeout=45000)
+        url = f"https://dm.epiq11.com/{slug}/docket"
+        await page.goto(url, wait_until="domcontentloaded", timeout=45000)
+        
+        await page.screenshot(path=f"debug_epiq_{slug}_loaded.png")
         
         if await detect_cloudflare_challenge(page):
             bypassed = await wait_for_cloudflare_bypass(page)
             if not bypassed:
                 raise Exception("Cloudflare blocked Epiq")
                 
-        search_input = await page.wait_for_selector(EPIQ_SELECTORS["search_input"], timeout=15000)
-        await search_input.click()
-        for char in company_name:
-            await page.keyboard.type(char)
-            await asyncio.sleep(random.uniform(0.08, 0.15))
-            
-        await page.keyboard.press("Enter")
-        await asyncio.sleep(5) # Wait for page load
-        
         # In a real scenario, we'd navigate to the docket tab. Let's assume we find rows.
         rows = await page.query_selector_all(EPIQ_SELECTORS["docket_rows"])
         for row in rows:
@@ -196,6 +192,7 @@ async def scout_epiq(page: Page, company_name: str, filing_year: int) -> List[Di
                     results.append(meta)
                     
     except Exception as e:
+        await page.screenshot(path=f"debug_epiq_fail_{slug}.png")
         print(f"Epiq Scout Error: {e}")
         raise e # Re-raise for nodriver fallback detection
         
