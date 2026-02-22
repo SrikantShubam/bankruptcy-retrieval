@@ -21,6 +21,7 @@ sys.path.insert(0, '../bankruptcy-retrieval')
 from shared.config import (
     COURTLISTENER_API_TOKEN,
     COURTLISTENER_BASE_URL,
+    COURTLISTENER_SEARCH_URL,
     MAX_KEYWORD_QUERIES_PER_DEAL,
     get_court_slug
 )
@@ -125,7 +126,7 @@ async def find_docket(company_name: str, filing_year: int, court: str, client: h
     if court_slug:
         params["court"] = court_slug
 
-    url = f"{COURTLISTENER_BASE_URL}/dockets/"
+    url = f"{COURTLISTENER_SEARCH_URL}/dockets/"
 
     try:
         response = await rate_limited_api_call(url, params)
@@ -172,7 +173,7 @@ async def find_docket_entries(docket_id: str, keywords: List[str], client: httpx
             "fields": "id,description,date_filed,recap_documents"
         }
 
-        url = f"{COURTLISTENER_BASE_URL}/docket-entries/"
+        url = f"{COURTLISTENER_SEARCH_URL}/docket-entries/"
 
         try:
             response = await rate_limited_api_call(url, params)
@@ -216,7 +217,7 @@ async def get_recap_document_metadata(doc_id: str, client: httpx.AsyncClient) ->
     Returns:
         Document metadata dict or None if not found
     """
-    url = f"{COURTLISTENER_BASE_URL}/recap-documents/{doc_id}/"
+    url = f"{COURTLISTENER_SEARCH_URL}/recap-documents/{doc_id}/"
     params = {
         "fields": "id,description,filepath_local,is_available"
     }

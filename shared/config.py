@@ -163,8 +163,12 @@ MAX_PDF_BYTES: int = 52_428_800  # 50 MB
 # CourtListener per-second rate limit
 COURTLISTENER_REQUESTS_PER_SECOND: int = 10
 
-# CourtListener base URL
+# V4 REST API — filter-based, use for docket lookups by ID
 COURTLISTENER_BASE_URL: str = "https://www.courtlistener.com/api/rest/v4"
+
+# V3 REST API — supports case_name__icontains, chapter, docket-entries filters
+# Use this for all search operations (dockets, docket-entries, recap-documents)
+COURTLISTENER_SEARCH_URL: str = "https://www.courtlistener.com/api/rest/v3"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
