@@ -14,7 +14,7 @@ from session_manager import (
     detect_cloudflare_challenge,
     wait_for_cloudflare_bypass
 )
-from config import KROLL_SELECTORS, STRETTO_SELECTORS, EPIQ_SELECTORS, EXCLUDED_SET
+from config import KROLL_SELECTORS, STRETTO_SELECTORS, EPIQ_SELECTORS, EXCLUDED_SET, KROLL_SEARCH_KEYWORDS
 
 logger = TelemetryLogger(
     worktree="B",
@@ -87,7 +87,14 @@ async def scout_kroll(page: Page, company_name: str, filing_year: int) -> List[D
     deal_id = company_name.lower().replace(" ", "-").replace(",", "").replace(".", "")
     
     try:
-        url = build_kroll_url(company_name)
+        slug = KROLL_CASE_SLUGS.get(company_name)
+        if not slug:
+            logger.warning(f"No Kroll slug for '{company_name}' — falling back to search UI")
+            url = "https://restructuring.ra.kroll.com/Home/GetGlobalSearchResults"
+        else:
+            url = f"https://restructuring.ra.kroll.com/{slug}/Home-Index?tab=docket"
+            logger.info(f"Navigating to Kroll case URL: {url}")
+            
         await page.goto(url, wait_until="networkidle", timeout=45000)
         
         # Screenshot immediately — before ANY other logic
@@ -116,12 +123,7 @@ async def scout_kroll(page: Page, company_name: str, filing_year: int) -> List[D
             "input[placeholder*=\"'motion'\"], input[placeholder*=\"'123'\"]"
         )
         
-        keywords_to_try = [
-            "first day declaration", 
-            "declaration in support", 
-            "DIP motion", 
-            "cash collateral"
-        ] if search_box else [""]
+        keywords_to_try = KROLL_SEARCH_KEYWORDS if search_box else [""]
         
         for search_term in keywords_to_try:
             if search_box and search_term:
@@ -140,6 +142,7 @@ async def scout_kroll(page: Page, company_name: str, filing_year: int) -> List[D
                 await page.screenshot(path=f"debug_kroll_{deal_id}_searched_{search_term.replace(' ', '_')}.png")
             
             rows = await page.query_selector_all("table tbody tr")
+            keyword_candidates = []
             
             for row in rows:
                 text = await row.inner_text()
@@ -193,9 +196,10 @@ async def scout_kroll(page: Page, company_name: str, filing_year: int) -> List[D
                     "attachment_descriptions": [],
                     "source": "kroll",
                 })
+                keyword_candidates.append(results[-1])
                 
-                if results:
-                    break  # First match per keyword search is sufficient — Gatekeeper decides
+                if len(keyword_candidates) >= 3:
+                    break  # Collect up to 3 matches per keyword search
                     
             if results:
                 break # Break outer loop since we found valid candidates
