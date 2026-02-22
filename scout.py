@@ -89,11 +89,11 @@ async def scout_kroll(page: Page, company_name: str, filing_year: int) -> List[D
     try:
         slug = KROLL_CASE_SLUGS.get(company_name)
         if not slug:
-            logger.warning(f"No Kroll slug for '{company_name}' — falling back to search UI")
+            print(f"No Kroll slug for '{company_name}' — falling back to search UI")
             url = "https://restructuring.ra.kroll.com/Home/GetGlobalSearchResults"
         else:
             url = f"https://restructuring.ra.kroll.com/{slug}/Home-Index?tab=docket"
-            logger.info(f"Navigating to Kroll case URL: {url}")
+            print(f"Navigating to Kroll case URL: {url}")
             
         await page.goto(url, wait_until="networkidle", timeout=45000)
         
@@ -293,7 +293,7 @@ async def scout_epiq(page: Page, company_name: str, filing_year: int) -> List[Di
         slug = await resolve_epiq_slug(page, company_name)
     
     if not slug:
-        logger.warning(f"Cannot resolve Epiq slug for {company_name}")
+        print(f"Cannot resolve Epiq slug for {company_name}")
         return []
     
     try:
@@ -411,7 +411,15 @@ async def scout_with_fallback(browser: BrowserContext, deal: Dict[str, Any]) -> 
             "fallback": "courtlistener", 
             "deal_id": deal["deal_id"]
         }))
-        # API fallback logic would go here. We simulate returning an empty list to proceed to Not Found
+        # API fallback logic would go here:
+        # response = await client.get("https://www.courtlistener.com/api/rest/v4/search/", 
+        #     params={
+        #         "q": f'"{company_name}" (short_description:"first day" OR short_description:"DIP")',
+        #         "type": "r",
+        #         "available_only": "on",
+        #         "filed_after": f"{filing_year}-01-01",
+        #         "filed_before": f"{filing_year}-12-31",
+        #     }, ...)
         pass
         
     # Standardize output for Gatekeeper
