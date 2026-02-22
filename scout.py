@@ -14,7 +14,7 @@ from session_manager import (
     detect_cloudflare_challenge,
     wait_for_cloudflare_bypass
 )
-from config import KROLL_SELECTORS, STRETTO_SELECTORS, EPIQ_SELECTORS, EXCLUDED_SET, KROLL_SEARCH_KEYWORDS
+from config import KROLL_SELECTORS, STRETTO_SELECTORS, EPIQ_SELECTORS, EXCLUDED_SET, KROLL_SEARCH_KEYWORDS, EPIQ_CASE_SLUGS
 
 logger = TelemetryLogger(
     worktree="B",
@@ -229,6 +229,13 @@ async def scout_stretto(page: Page, company_name: str, filing_year: int) -> List
             url = f"https://cases.stretto.com/?s={company_name}"
             await page.goto(url, wait_until="domcontentloaded", timeout=30000)
             
+        try:
+            await page.wait_for_selector("div#root > *", timeout=15000)
+        except:
+            await page.wait_for_selector("h1, h2, .case-title", timeout=10000)
+            
+        await asyncio.sleep(random.uniform(1.5, 2.5))
+        
         await page.screenshot(path=f"debug_stretto_{slug}_loaded.png")
             
         if await detect_cloudflare_challenge(page):
@@ -256,10 +263,38 @@ async def scout_stretto(page: Page, company_name: str, filing_year: int) -> List
         
     return results
 
+async def resolve_epiq_slug(page: Page, company_name: str) -> str | None:
+    """
+    Try to find the correct Epiq case slug via cross-case search.
+    Returns slug string or None if not found.
+    """
+    search_url = f"https://dm.epiq11.com/cases?q={company_name.replace(' ', '+')}"
+    await page.goto(search_url)
+    await page.wait_for_load_state("networkidle")
+    
+    # Look for case result links matching company name
+    links = await page.query_selector_all("a[href*='/case/'], a[href*='/docket']")
+    for link in links:
+        href = await link.get_attribute("href")
+        text = await link.inner_text()
+        if company_name.lower().split()[0] in text.lower():
+            # Extract slug from href: /YellowCorporation/docket → YellowCorporation
+            parts = href.strip("/").split("/")
+            if parts:
+                return parts[0]
+    return None
+
 async def scout_epiq(page: Page, company_name: str, filing_year: int) -> List[Dict[str, Any]]:
     """Navigate Epiq docket. (nodriver fallback handled in orchestrator)"""
     results = []
-    slug = company_name.lower().replace(" ", "-").replace(",", "").replace(".", "")
+    
+    slug = EPIQ_CASE_SLUGS.get(company_name)
+    if not slug:
+        slug = await resolve_epiq_slug(page, company_name)
+    
+    if not slug:
+        logger.warning(f"Cannot resolve Epiq slug for {company_name}")
+        return []
     
     try:
         url = f"https://dm.epiq11.com/{slug}/docket"

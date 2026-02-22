@@ -4,6 +4,7 @@ import asyncio
 from pathlib import Path
 from playwright.async_api import Page
 from shared.telemetry import TelemetryLogger
+from config import STRETTO_ERROR_SIGNATURES
 
 logger = TelemetryLogger(
     worktree="B",
@@ -22,6 +23,24 @@ async def download_via_browser(page: Page, pdf_url: str, deal_id: str) -> dict:
     """
     target_dir = Path(DOWNLOAD_DIR) / deal_id
     os.makedirs(target_dir, exist_ok=True)
+    
+    # Check for Stretto's "document no longer available" error
+    try:
+        await page.goto(pdf_url, wait_until="domcontentloaded", timeout=15000)
+        error_el = await page.query_selector("h1, h2, strong")
+        if error_el:
+            error_text = (await error_el.inner_text()).lower()
+            if any(sig in error_text for sig in STRETTO_ERROR_SIGNATURES) or ("no longer available" in error_text or "document" in error_text):
+                return {
+                    "success": False,
+                    "local_file_path": None,
+                    "failure_reason": "STRETTO_DOCUMENT_REMOVED",
+                    "file_size_bytes": 0,
+                    "fetch_method": "browser_download"
+                }
+    except Exception as e:
+        print(f"Fetcher pre-check navigation failed: {e}")
+        pass
     
     # We must click the link, so we need to find it in the DOM
     # If we only have the URL, we might need to inject an anchor and click it to trigger download
