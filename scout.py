@@ -115,14 +115,16 @@ async def scout_kroll(page: Page, company_name: str, filing_year: int) -> List[D
         search_box = await page.query_selector(
             "input[placeholder*=\"'motion'\"], input[placeholder*=\"'123'\"]"
         )
-        if search_box:
-            keywords_to_try = [
-                "first day declaration", 
-                "declaration in support", 
-                "DIP motion", 
-                "cash collateral"
-            ]
-            for search_term in keywords_to_try:
+        
+        keywords_to_try = [
+            "first day declaration", 
+            "declaration in support", 
+            "DIP motion", 
+            "cash collateral"
+        ] if search_box else [""]
+        
+        for search_term in keywords_to_try:
+            if search_box and search_term:
                 await search_box.click()
                 await search_box.fill("")
                 await asyncio.sleep(random.uniform(0.3, 0.7))
@@ -136,68 +138,67 @@ async def scout_kroll(page: Page, company_name: str, filing_year: int) -> List[D
                 await asyncio.sleep(random.uniform(1.0, 2.0))
                 
                 await page.screenshot(path=f"debug_kroll_{deal_id}_searched_{search_term.replace(' ', '_')}.png")
-                
-                rows = await page.query_selector_all("table tbody tr")
-                if rows:
-                    break
-        else:
+            
             rows = await page.query_selector_all("table tbody tr")
-        
-        for row in rows:
-            text = await row.inner_text()
-            text_lower = text.lower()
             
-            # Check keyword match
-            keyword_hit = any(kw in text_lower for kw in [
-                "first day", "dip motion", "debtor in possession",
-                "cash collateral", "declaration in support",
-                "capital structure", "prepetition"
-            ])
-            if not keyword_hit:
-                continue
-            
-            # Extract link (broadened selector from Bug 3 fix)
-            links = await row.query_selector_all("a[href]")
-            href = None
-            for a in links:
-                h = await a.get_attribute("href")
-                if h and any(p in h for p in [
-                    ".pdf", "/Document/", "/document/",
-                    "fileId=", "documentId=", "/File/", "/download"
-                ]):
-                    href = h
-                    break
-            if href is None and links:
-                href = await links[0].get_attribute("href")
-            
-            if href and href.startswith("/"):
-                href = f"https://restructuring.ra.kroll.com{href}"
-            
-            # Extract date from text
-            date_match = re.search(r"\b(\d{1,2}/\d{1,2}/\d{4}|\d{4}-\d{2}-\d{2})\b", text)
-            filing_date = date_match.group(1) if date_match else None
-            if filing_date and "/" in filing_date:
-                p = filing_date.split("/")
-                if len(p) == 3:
-                    filing_date = f"{p[2]}-{p[0].zfill(2)}-{p[1].zfill(2)}"
-            
-            # Get docket number from first cell
-            cells = await row.query_selector_all("td")
-            docket_num = ""
-            if cells:
-                docket_num = (await cells[0].inner_text()).strip()
-            
-            results.append({
-                "docket_entry_id": docket_num,
-                "docket_title": text.strip()[:200],
-                "filing_date": filing_date,
-                "resolved_pdf_url": href,
-                "attachment_descriptions": [],
-                "source": "kroll",
-            })
-            
+            for row in rows:
+                text = await row.inner_text()
+                text_lower = text.lower()
+                
+                # Check keyword match
+                keyword_hit = any(kw in text_lower for kw in [
+                    "first day", "dip motion", "debtor in possession",
+                    "cash collateral", "declaration in support",
+                    "capital structure", "prepetition"
+                ])
+                if not keyword_hit:
+                    continue
+                
+                # Extract link (broadened selector from Bug 3 fix)
+                links = await row.query_selector_all("a[href]")
+                href = None
+                for a in links:
+                    h = await a.get_attribute("href")
+                    if h and any(p in h for p in [
+                        ".pdf", "/Document/", "/document/",
+                        "fileId=", "documentId=", "/File/", "/download"
+                    ]):
+                        href = h
+                        break
+                if href is None and links:
+                    href = await links[0].get_attribute("href")
+                
+                if href and href.startswith("/"):
+                    href = f"https://restructuring.ra.kroll.com{href}"
+                
+                # Extract date from text
+                date_match = re.search(r"\b(\d{1,2}/\d{1,2}/\d{4}|\d{4}-\d{2}-\d{2})\b", text)
+                filing_date = date_match.group(1) if date_match else None
+                if filing_date and "/" in filing_date:
+                    p = filing_date.split("/")
+                    if len(p) == 3:
+                        filing_date = f"{p[2]}-{p[0].zfill(2)}-{p[1].zfill(2)}"
+                
+                # Get docket number from first cell
+                cells = await row.query_selector_all("td")
+                docket_num = ""
+                if cells:
+                    docket_num = (await cells[0].inner_text()).strip()
+                
+                results.append({
+                    "docket_entry_id": docket_num,
+                    "docket_title": text.strip()[:200],
+                    "filing_date": filing_date,
+                    "resolved_pdf_url": href,
+                    "attachment_descriptions": [],
+                    "source": "kroll",
+                })
+                
+                if results:
+                    break  # First match per keyword search is sufficient — Gatekeeper decides
+                    
             if results:
-                break  # First match per keyword search is sufficient — Gatekeeper decides
+                break # Break outer loop since we found valid candidates
                     
     except Exception as e:
         print(f"Kroll Scout Error TYPE: {type(e).__name__}")

@@ -8,7 +8,7 @@ import random
 
 from camoufox.async_api import AsyncCamoufox
 
-from shared.gatekeeper import LLMGatekeeper
+from shared.gatekeeper import LLMGatekeeper, CandidateDocument
 from shared.telemetry import TelemetryLogger
 from config import EXCLUDED_SET
 from session_manager import (
@@ -94,11 +94,20 @@ async def pipeline_run():
             local_file_path = None
             total_llm_calls = 0
             
+            if candidates:
+                print(f"DEBUG: FIRST EXTRACTED CANDIDATE = {json.dumps(candidates[0], indent=2)}")
+                
             # 5. Gatekeeper Evaluation (Max 3 calls per deal)
             download_candidate = None
             for idx, candidate in enumerate(candidates[:3]):
                 total_llm_calls += 1
-                verdict, score, reasoning, token_cnt = await gatekeeper.evaluate(candidate)
+                
+                doc = CandidateDocument(**candidate)
+                result = await gatekeeper.evaluate(doc)
+                verdict = result.verdict
+                score = result.score
+                reasoning = result.reasoning
+                token_cnt = result.token_count
                 
                 logger.log_gatekeeper_decision(
                     deal=deal,
