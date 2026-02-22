@@ -111,7 +111,36 @@ async def scout_kroll(page: Page, company_name: str, filing_year: int) -> List[D
             await page.screenshot(path=f"debug_kroll_docket_fail_{deal_id}.png")
             return []
             
-        rows = await page.query_selector_all("tr")
+        search_box = await page.query_selector(
+            "input[placeholder*=\"'motion'\"], input[placeholder*=\"'123'\"]"
+        )
+        if search_box:
+            keywords_to_try = [
+                "first day declaration", 
+                "declaration in support", 
+                "DIP motion", 
+                "cash collateral"
+            ]
+            for search_term in keywords_to_try:
+                await search_box.click()
+                await search_box.fill("")
+                await asyncio.sleep(random.uniform(0.3, 0.7))
+                
+                for char in search_term:
+                    await page.keyboard.type(char)
+                    await asyncio.sleep(random.uniform(0.08, 0.15))
+                
+                await page.keyboard.press("Enter")
+                await page.wait_for_load_state("networkidle")
+                await asyncio.sleep(random.uniform(1.0, 2.0))
+                
+                await page.screenshot(path=f"debug_kroll_{deal_id}_searched_{search_term.replace(' ', '_')}.png")
+                
+                rows = await page.query_selector_all("table tbody tr")
+                if rows:
+                    break
+        else:
+            rows = await page.query_selector_all("table tbody tr")
         
         for row in rows:
             text = await row.inner_text()
