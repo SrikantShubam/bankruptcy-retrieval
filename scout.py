@@ -21,7 +21,7 @@ sys.path.insert(0, '../bankruptcy-retrieval')
 from shared.config import (
     COURTLISTENER_API_TOKEN,
     COURTLISTENER_BASE_URL,
-    COURTLISTENER_SEARCH_URL,
+    COURTLISTENER_V4_SEARCH_URL,
     MAX_KEYWORD_QUERIES_PER_DEAL,
     get_court_slug
 )
@@ -113,20 +113,21 @@ async def find_docket(company_name: str, filing_year: int, court: str, client: h
     """
     court_slug = get_court_slug(court)
 
-    # Build query parameters
+    # Build query parameters for V4 search endpoint
     params = {
-        "case_name__icontains": company_name,
-        "date_filed__gte": f"{filing_year}-01-01",
-        "date_filed__lte": f"{filing_year}-12-31",
-        "chapter": 11,
-        "fields": "id,case_name,date_filed,court,docket_number"
+        "q": f'"{company_name}" chapter:11',
+        "type": "r",  # docket type
+        "available_only": "on",
+        "order_by": "score desc",
+        "filed_after": f"{filing_year}-01-01",
+        "filed_before": f"{filing_year}-12-31",
     }
 
     # Add court filter if we have a valid slug
     if court_slug:
         params["court"] = court_slug
 
-    url = f"{COURTLISTENER_SEARCH_URL}/dockets/"
+    url = COURTLISTENER_V4_SEARCH_URL
 
     try:
         response = await rate_limited_api_call(url, params)
@@ -164,16 +165,17 @@ async def find_docket_entries(docket_id: str, keywords: List[str], client: httpx
         if queries_made >= MAX_KEYWORD_QUERIES_PER_DEAL:
             break
 
+        # Build query for V4 search endpoint
+        # Search within the specific docket by its ID in the query
         params = {
-            "docket": docket_id,
-            "description__icontains": keyword,
-            "date_filed__gte": "2019-01-01",  # Broad range to catch older cases
-            "order_by": "date_filed",
-            "page_size": 5,
-            "fields": "id,description,date_filed,recap_documents"
+            "q": f'docket_id:{docket_id} "{keyword}"',
+            "type": "r",  # docket type
+            "available_only": "on",
+            "order_by": "score desc",
+            "filed_after": "2019-01-01",  # Broad range to catch older cases
         }
 
-        url = f"{COURTLISTENER_SEARCH_URL}/docket-entries/"
+        url = COURTLISTENER_V4_SEARCH_URL
 
         try:
             response = await rate_limited_api_call(url, params)
@@ -185,7 +187,7 @@ async def find_docket_entries(docket_id: str, keywords: List[str], client: httpx
             # Add entries to our found list
             for entry in results:
                 # Only add if we haven't seen this entry ID before
-                if not any(e["id"] == entry["id"] for e in found_entries):
+                if not any(e.get("id") == entry.get("id") for e in found_entries):
                     found_entries.append(entry)
 
             # If we found entries, we might have what we need
@@ -217,7 +219,8 @@ async def get_recap_document_metadata(doc_id: str, client: httpx.AsyncClient) ->
     Returns:
         Document metadata dict or None if not found
     """
-    url = f"{COURTLISTENER_SEARCH_URL}/recap-documents/{doc_id}/"
+    # For V4, we'll use the BASE_URL for direct document lookup
+    url = f"{COURTLISTENER_BASE_URL}/recap-documents/{doc_id}/"
     params = {
         "fields": "id,description,filepath_local,is_available"
     }

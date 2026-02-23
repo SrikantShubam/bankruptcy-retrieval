@@ -11,6 +11,59 @@ from typing import Dict, List, Any
 # Add the shared directory to the path
 sys.path.insert(0, '../bankruptcy-retrieval')
 
+# Diagnostic test
+import httpx
+from shared.config import find_root_env
+from dotenv import load_dotenv
+load_dotenv(find_root_env())
+
+async def test():
+    token = os.environ.get("COURTLISTENER_API_TOKEN", "NOT_FOUND")
+    print(f"Token loaded: {token[:15] if token != 'NOT_FOUND' else 'NOT_FOUND'}...")
+    async with httpx.AsyncClient() as client:
+        try:
+            # Test with no parameters first
+            print("Testing with no parameters...")
+            r = await client.get(
+                "https://www.courtlistener.com/api/rest/v4/dockets/",
+                headers={"Authorization": f"Token {token}"},
+                timeout=30.0
+            )
+            print(f"Status: {r.status_code}")
+            print(f"Response: {r.text[:500]}")
+
+            # Test with just q parameter
+            print("\nTesting with q parameter...")
+            r = await client.get(
+                "https://www.courtlistener.com/api/rest/v4/dockets/",
+                headers={"Authorization": f"Token {token}"},
+                params={"q": "WeWork"},
+                timeout=30.0
+            )
+            print(f"Status: {r.status_code}")
+            print(f"Response: {r.text[:500]}")
+
+            # Test with fields parameter only
+            print("\nTesting with fields parameter...")
+            r = await client.get(
+                "https://www.courtlistener.com/api/rest/v4/dockets/",
+                headers={"Authorization": f"Token {token}"},
+                params={"fields": "id,case_name"},
+                timeout=30.0
+            )
+            print(f"Status: {r.status_code}")
+            print(f"Response: {r.text[:500]}")
+
+        except Exception as e:
+            print(f"Error during test: {e}")
+            import traceback
+            traceback.print_exc()
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "--test":
+        asyncio.run(test())
+        sys.exit(0)
+
 # Import shared modules
 from shared.config import (
     is_excluded,
@@ -308,6 +361,8 @@ async def process_deal(deal: Dict[str, Any], gatekeeper: LLMGatekeeper, telemetr
         raise
     except Exception as e:
         logger.error(f"Error processing deal {deal_id}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         telemetry.log_pipeline_terminal(
             deal=deal,
             pipeline_status="NOT_FOUND",  # Treat as not found on error
@@ -375,4 +430,7 @@ async def main():
     logger.info(f"Processed {processed_count} deals")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    if len(sys.argv) > 1 and sys.argv[1] == "--test":
+        asyncio.run(test())
+    else:
+        asyncio.run(main())

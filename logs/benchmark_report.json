@@ -1,0 +1,23 @@
+{
+  "worktree": "A",
+  "run_timestamp_utc": "2026-02-20T18:03:08.062+00:00",
+  "deals_total": 68,
+  "deals_already_processed": 5,
+  "deals_active": 63,
+  "true_positives": 0,
+  "false_positives": 0,
+  "true_negatives": 25,
+  "false_negatives": 38,
+  "unclassified": 0,
+  "precision": 0.0,
+  "recall": 0.0,
+  "f1_score": 0.0,
+  "coverage": 0.0,
+  "decoy_filter_rate": 1.0,
+  "api_efficiency": 0.0,
+  "total_api_calls": 63,
+  "total_llm_gatekeeper_calls": 0,
+  "total_runtime_seconds": 7.43,
+  "already_processed_correctly_excluded": 5,
+  "already_processed_incorrectly_processed": 0
+}
