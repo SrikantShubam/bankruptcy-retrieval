@@ -25,9 +25,13 @@ from langchain_core.tools import tool
 from shared.config import (
     COURTLISTENER_API_TOKEN,
     COURTLISTENER_BASE_URL,
+    COURTLISTENER_SEARCH_URL,  # V3 search URL
     CLAIMS_AGENT_BASE_URLS,
     VALID_PDF_DOMAIN_PATTERNS,
 )
+
+# V3 API base for docket and docket-entries endpoints
+COURTLISTENER_V3_BASE: str = "https://www.courtlistener.com/api/rest/v3"
 from validators import CandidateDocument
 
 logger = logging.getLogger(__name__)
@@ -106,7 +110,7 @@ async def search_courtlistener_api(
                 docket_params["court"] = court_slug
             
             response = await client.get(
-                f"{COURTLISTENER_BASE_URL}/dockets/",
+                f"{COURTLISTENER_V3_BASE}/dockets/",
                 params=docket_params,
                 headers=headers
             )
@@ -121,14 +125,17 @@ async def search_courtlistener_api(
                     if not docket_id:
                         continue
                     
-                    # Get docket entries for this docket
+                    # Get docket entries for this docket (V3 endpoint)
                     entries_response = await client.get(
-                        f"{COURTLISTENER_BASE_URL}/docket-entries/",
+                        f"{COURTLISTENER_V3_BASE}/docket-entries/",
                         params={
                             "docket": docket_id,
-                            "docket_entry__description__icontains": keyword,
+                            "description__icontains": keyword,  # V3 param name
+                            "date_filed__gte": f"{filing_year}-01-01",
+                            "order_by": "date_filed",
+                            "page_size": 5,
+                            "fields": "id,description,date_filed,recap_documents",
                             "format": "json",
-                            "limit": 10,
                         },
                         headers=headers
                     )
@@ -224,8 +231,9 @@ async def search_courtlistener_fulltext(query: str) -> str:
     
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
+            # Use V3 search endpoint (V4 doesn't support `q` parameter)
             response = await client.get(
-                f"{COURTLISTENER_BASE_URL}/search/",
+                COURTLISTENER_SEARCH_URL,
                 params={
                     "q": query,
                     "format": "json",

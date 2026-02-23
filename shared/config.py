@@ -133,15 +133,38 @@ def is_excluded(deal: dict) -> bool:
 # Used by the Scout to filter docket entries server-side.
 # Ordered by specificity — stop querying once the first match is found.
 
+import unicodedata
+
+def _sanitize_keyword(kw: str) -> str:
+    """
+    Sanitize a keyword to remove non-ASCII characters that may cause
+    double-encoding issues (mojibake) when URL-encoded.
+    
+    Converts:
+      - em dash (U+2014) → hyphen
+      - en dash (U+2013) → hyphen
+      - curly quotes (U+201C, U+201D) → straight quotes
+      - curly apostrophes (U+2018, U+2019) → straight apostrophe
+    """
+    kw = unicodedata.normalize("NFC", kw)
+    kw = kw.replace("\u2014", "-")   # em dash → hyphen
+    kw = kw.replace("\u2013", "-")   # en dash → hyphen
+    kw = kw.replace("\u201c", '"')   # left curly quote → straight
+    kw = kw.replace("\u201d", '"')   # right curly quote → straight
+    kw = kw.replace("\u2018", "'")   # left single curly quote
+    kw = kw.replace("\u2019", "'")   # right single curly quote / apostrophe
+    return kw
+
+# Apply sanitization at load time to ensure all keywords are ASCII-safe
 PRIORITY_KEYWORDS: list[str] = [
-    "first day declaration",
-    "declaration in support of first day",
-    "DIP motion",
-    "debtor in possession financing",
-    "cash collateral",
-    "capital structure",
-    "prepetition debt",
-    "credit agreement",
+    _sanitize_keyword("first day declaration"),
+    _sanitize_keyword("declaration in support of first day"),
+    _sanitize_keyword("DIP motion"),
+    _sanitize_keyword("debtor in possession financing"),
+    _sanitize_keyword("cash collateral"),
+    _sanitize_keyword("capital structure"),
+    _sanitize_keyword("prepetition debt"),
+    _sanitize_keyword("credit agreement"),
 ]
 
 # Target document type labels (for display / logging)
@@ -165,6 +188,10 @@ COURTLISTENER_REQUESTS_PER_SECOND: int = 10
 
 # CourtListener base URL
 COURTLISTENER_BASE_URL: str = "https://www.courtlistener.com/api/rest/v4"
+
+# CourtListener V3 search URL (full-text search with `q` parameter)
+# V4 API does NOT support the `q` parameter - use this for search/
+COURTLISTENER_SEARCH_URL: str = "https://www.courtlistener.com/api/rest/v3/search/"
 
 
 # ─────────────────────────────────────────────────────────────────────────────

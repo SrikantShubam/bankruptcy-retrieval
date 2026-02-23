@@ -30,6 +30,7 @@ from shared.config import (
     PRIORITY_KEYWORDS,
     MAX_KEYWORD_QUERIES_PER_DEAL,
     get_court_slug,
+    COURTLISTENER_SEARCH_URL,  # V3 search URL (V4 doesn't support `q` param)
 )
 from shared.gatekeeper import LLMGatekeeper, CandidateDocument as GatekeeperCandidate
 from tools import (
@@ -62,111 +63,117 @@ async def exclusion_check_node(state: PipelineState) -> PipelineState:
             "final_status": "ALREADY_PROCESSED"
         }
     
-    return {**state, "pipeline_status": "active"}
+    return {**state, "pipeline_status": "active", "final_status": "active"}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Scout Node - Uses CourtListener V4 Search API (RECAP documents)
+# Scout Node - Uses CourtListener V4 Search API
 # ─────────────────────────────────────────────────────────────────────────────
+
+# V4 search endpoint - supports `q` parameter with full-text search
+COURTLISTENER_V4_SEARCH = "https://www.courtlistener.com/api/rest/v4/search/"
 
 async def scout_node(state: PipelineState) -> PipelineState:
-    """Scout agent searches for documents using CourtListener V4 Search API with RECAP type."""
+    """
+    Scout agent searches for documents using CourtListener V4 Search API.
+    Falls back to claims agent browser tool if no results.
+    """
     import httpx
-    from shared.config import COURTLISTENER_API_TOKEN, COURTLISTENER_BASE_URL
+    import json
+    from shared.config import (
+        COURTLISTENER_API_TOKEN,
+    )
     
     deal = state.get("deal", {})
     deal_id = deal.get("deal_id", "")
     company_name = deal.get("company_name", "")
     filing_year = deal.get("filing_year", 2023)
+    claims_agent = deal.get("claims_agent")
     
-    headers = {}
-    if COURTLISTENER_API_TOKEN:
-        headers["Authorization"] = f"Token { COURTLISTENER_API_TOKEN}"
-    
+    headers = {"Authorization": f"Token {COURTLISTENER_API_TOKEN}"} if COURTLISTENER_API_TOKEN else {}
     candidates = []
     api_calls_made = 0
     search_attempts = state.get("search_attempts", 0) + 1
     
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            # Search for RECAP documents directly using type "r"
-            # Iterate through priority keywords - stop at first match
-            for keyword in PRIORITY_KEYWORDS[:MAX_KEYWORD_QUERIES_PER_DEAL]:
-                search_query = f"{company_name} {keyword}"
+    # ── Phase 1: CourtListener V4 search ──
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        for keyword in PRIORITY_KEYWORDS[:MAX_KEYWORD_QUERIES_PER_DEAL]:
+            params = {
+                "q": f'"{company_name}" {keyword}',
+                "type": "r",  # RECAP documents
+                "available_only": "on",
+                "order_by": "score desc",
+                "filed_after": f"{filing_year}-01-01",
+                "filed_before": f"{filing_year}-12-31",
+            }
+            
+            response = await client.get(
+                COURTLISTENER_V4_SEARCH,
+                params=params,
+                headers=headers
+            )
+            api_calls_made += 1
+            
+            if response.status_code == 200:
+                search_data = response.json()
+                results = search_data.get("results", [])
                 
-                search_params = {
-                    "q": search_query,
-                    "type": "r",  # RECAP documents
-                    "filed_after": f"{filing_year}-01-01",
-                    "filed_before": f"{filing_year}-12-31",
-                    "order_by": "score desc",
-                    "page_size": 5,
-                }
-                
-                response = await client.get(
-                    f"{COURTLISTENER_BASE_URL}/search/",
-                    params=search_params,
-                    headers=headers
-                )
-                api_calls_made += 1
-                
-                if response.status_code == 200:
-                    search_data = response.json()
-                    results = search_data.get("results", [])
-                    
-                    if results:
-                        # Found RECAP documents - extract relevant info from recap_documents array
-                        for result in results:
-                            # Get case name and date
-                            case_name = result.get("caseName", company_name)
-                            date_filed = result.get("dateFiled", "")[:10] if result.get("dateFiled") else ""
+                if results:
+                    # Extract candidates from RECAP documents
+                    for result in results:
+                        case_name = result.get("caseName", company_name)
+                        date_filed = result.get("dateFiled", "")[:10] if result.get("dateFiled") else ""
+                        
+                        recap_docs = result.get("recap_documents", [])
+                        for doc in recap_docs:
+                            if not doc.get("is_available", False):
+                                continue
                             
-                            # Get recap documents from the result
-                            recap_docs = result.get("recap_documents", [])
+                            description = doc.get("description", "")
+                            if not description:
+                                description = doc.get("short_description", "")
                             
-                            for doc in recap_docs:
-                                # Check if document is available
-                                if not doc.get("is_available", False):
-                                    continue
-                                
-                                # Get description
-                                description = doc.get("description", "")
-                                if not description:
-                                    description = doc.get("short_description", "")
-                                
-                                # Construct PDF URL from filepath_local
-                                # Format: https://storage.courtlistener.com/{filepath_local}
-                                filepath = doc.get("filepath_local", "")
-                                if filepath:
-                                    pdf_url = f"https://storage.courtlistener.com/{filepath}"
-                                else:
-                                    continue
-                                
-                                # Skip if no PDF URL available
-                                if not pdf_url:
-                                    continue
-                                
-                                candidate = {
-                                    "deal_id": deal_id,
-                                    "source": "courtlistener",
-                                    "docket_entry_id": str(doc.get("docket_entry_id", "")),
-                                    "docket_title": description or case_name,
-                                    "filing_date": date_filed,
-                                    "attachment_descriptions": [],
-                                    "resolved_pdf_url": pdf_url,
-                                    "api_calls_consumed": api_calls_made,
-                                }
-                                candidates.append(candidate)
-                                break  # Found one, stop
+                            filepath = doc.get("filepath_local", "")
+                            if filepath:
+                                pdf_url = f"https://storage.courtlistener.com/{filepath}"
+                            else:
+                                continue
                             
-                            if candidates:
-                                break  # Found candidate, stop results
+                            if not pdf_url:
+                                continue
+                            
+                            candidate = {
+                                "deal_id": deal_id,
+                                "source": "courtlistener",
+                                "docket_entry_id": str(doc.get("docket_entry_id", "")),
+                                "docket_title": description or case_name,
+                                "filing_date": date_filed,
+                                "attachment_descriptions": [],
+                                "resolved_pdf_url": pdf_url,
+                                "api_calls_consumed": api_calls_made,
+                            }
+                            candidates.append(candidate)
+                            break  # Found one, stop
                         
                         if candidates:
-                            break  # Found candidate, stop keywords
+                            break  # Found candidate, stop results
+                    
+                    if candidates:
+                        break  # Found candidate, stop keywords
     
-    except Exception as e:
-        logger.warning(f"Scout error for {deal_id}: {e}")
+    # ── Phase 2: Claims agent browser tool fallback ──
+    if not candidates and claims_agent:
+        try:
+            from tools import search_claims_agent_browser
+            result_json = await search_claims_agent_browser.ainvoke({
+                "company_name": company_name,
+                "claims_agent": claims_agent
+            })
+            browser_candidates = json.loads(result_json) if result_json else []
+            candidates.extend(browser_candidates)
+            logger.info(f"Browser fallback for {deal_id}: found {len(browser_candidates)} candidates")
+        except Exception as e:
+            logger.warning(f"Browser tool failed for {deal_id}: {e}")
     
     return {
         **state,
@@ -199,6 +206,9 @@ async def gatekeeper_node(state: PipelineState) -> PipelineState:
     # Use first candidate
     candidate = candidates[0]
     
+    # Log the docket_title being evaluated (DEBUG: why so many SKIPs?)
+    logger.info(f"[GATEKEEPER] Evaluating deal_id={candidate.get('deal_id')} | docket_title='{candidate.get('docket_title')}'")
+    
     # Call gatekeeper
     try:
         gatekeeper = LLMGatekeeper()
@@ -214,6 +224,9 @@ async def gatekeeper_node(state: PipelineState) -> PipelineState:
         )
         
         result = await gatekeeper.evaluate(gatekeeper_candidate)
+        
+        # Log gatekeeper result (DEBUG: track scores for borderline cases)
+        logger.info(f"[GATEKEEPER] Result for {candidate.get('deal_id')}: verdict={result.verdict} score={result.score} reasoning={result.reasoning[:100] if result.reasoning else 'N/A'}...")
         
         gatekeeper_result = {
             "verdict": result.verdict,
@@ -322,7 +335,8 @@ async def fallback_node(state: PipelineState) -> PipelineState:
     """Fallback handler for failed downloads."""
     return {
         **state,
-        "pipeline_status": "FETCH_FAILED"
+        "pipeline_status": "FETCH_FAILED",
+        "final_status": "FETCH_FAILED"
     }
 
 
@@ -332,9 +346,32 @@ async def fallback_node(state: PipelineState) -> PipelineState:
 
 async def log_node(state: PipelineState) -> PipelineState:
     """Logs terminal state for already_processed or skipped deals."""
+    # Determine final status based on what happened
+    candidates = state.get("candidates", [])
+    gatekeeper_results = state.get("gatekeeper_results", [])
+    downloaded = state.get("downloaded_files", [])
+    pipeline_status = state.get("pipeline_status", "UNKNOWN")
+    
+    # If we have downloaded files, status is DOWNLOADED
+    if downloaded:
+        final_status = "DOWNLOADED"
+        pipeline_status = "DOWNLOADED"
+    # If no candidates found at all, it's NOT_FOUND
+    elif not candidates:
+        final_status = "NOT_FOUND"
+        pipeline_status = "NOT_FOUND"
+    # If gatekeeper returned SKIP verdict, it's SKIPPED
+    elif any(r.get("verdict") == "SKIP" for r in gatekeeper_results):
+        final_status = "SKIPPED"
+        pipeline_status = "SKIPPED"
+    # Otherwise use the pipeline_status
+    else:
+        final_status = pipeline_status
+    
     return {
         **state,
-        "final_status": state.get("pipeline_status", "UNKNOWN")
+        "pipeline_status": pipeline_status,
+        "final_status": final_status
     }
 
 
@@ -347,11 +384,14 @@ async def telemetry_node(state: PipelineState) -> PipelineState:
     downloaded = state.get("downloaded_files", [])
     if downloaded:
         final_status = "DOWNLOADED"
+        pipeline_status = "DOWNLOADED"
     else:
         final_status = state.get("pipeline_status", "UNKNOWN")
+        pipeline_status = final_status
     
     return {
         **state,
+        "pipeline_status": pipeline_status,
         "final_status": final_status
     }
 

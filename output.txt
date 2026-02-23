@@ -1,0 +1,8 @@
+0: 'first day declaration'
+1: 'declaration in support of first day'
+2: 'DIP motion'
+3: 'debtor in possession financing'
+4: 'cash collateral'
+5: 'capital structure'
+6: 'prepetition debt'
+7: 'credit agreement'
