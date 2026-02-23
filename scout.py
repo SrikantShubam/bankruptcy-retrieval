@@ -7,6 +7,8 @@ import asyncio
 from typing import List, Dict, Any, Tuple
 from camoufox.async_api import AsyncCamoufox
 from playwright.async_api import Page, TimeoutError, BrowserContext
+import httpx
+from dateutil.parser import parse as parse_date
 
 from shared.telemetry import TelemetryLogger
 from session_manager import (
@@ -411,17 +413,68 @@ async def scout_with_fallback(browser: BrowserContext, deal: Dict[str, Any]) -> 
             "fallback": "courtlistener", 
             "deal_id": deal["deal_id"]
         }))
-        # API fallback logic would go here:
-        # response = await client.get("https://www.courtlistener.com/api/rest/v4/search/", 
-        #     params={
-        #         "q": f'"{company_name}" (short_description:"first day" OR short_description:"DIP")',
-        #         "type": "r",
-        #         "available_only": "on",
-        #         "filed_after": f"{filing_year}-01-01",
-        #         "filed_before": f"{filing_year}-12-31",
-        #     }, ...)
-        pass
         
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get("https://www.courtlistener.com/api/rest/v4/search/", 
+                    params={
+                        "q": f'"{company_name}" (short_description:"first day" OR short_description:"DIP")',
+                        "type": "r",
+                        "available_only": "on",
+                        "filed_after": f"{filing_year}-01-01",
+                        "filed_before": f"{filing_year}-12-31",
+                    },
+                    timeout=30.0
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    for item in data.get("results", [])[:3]:
+                        # Typical RECAP search result fields
+                        title = item.get("short_description") or item.get("docket_entry") or "Unknown Title"
+                        # Make path absolute
+                        path = item.get("filepath_local", "")
+                        url = f"https://storage.courtlistener.com/{path}" if path else None
+                        
+                        results.append({
+                            "docket_entry_id": str(item.get("id", "CL_" + deal["deal_id"])),
+                            "docket_title": title,
+                            "filing_date": item.get("date_filed"),
+                            "resolved_pdf_url": url,
+                            "attachment_descriptions": [],
+                            "source": "courtlistener"
+                        })
+        except Exception as e:
+            print(f"Fallback RECAP V4 API Error for {company_name}: {e}")
+        
+    # 3. 30-Day Petition Date Guard
+    petition_date_str = deal.get("petition_date")
+    if petition_date_str:
+        try:
+            p_date = parse_date(petition_date_str, fuzzy=True).replace(tzinfo=None)
+            filtered_results = []
+            for r in results:
+                f_date_str = r.get("filing_date")
+                if not f_date_str:
+                    filtered_results.append(r)
+                    continue
+                try:
+                    f_date = parse_date(f_date_str, fuzzy=True).replace(tzinfo=None)
+                    if (f_date - p_date).days > 30:
+                        print(json.dumps({
+                            "event": "date_guard_rejected", 
+                            "deal_id": deal["deal_id"], 
+                            "title": r.get("docket_title"), 
+                            "filing_date": f_date_str, 
+                            "petition_date": petition_date_str
+                        }))
+                        continue
+                except:
+                    pass
+                filtered_results.append(r)
+            results = filtered_results
+        except Exception as e:
+            print(f"Petition Date parse error: {e}")
+
     # Standardize output for Gatekeeper
     for r in results:
         r["deal_id"] = deal["deal_id"]

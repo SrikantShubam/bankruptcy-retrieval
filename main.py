@@ -33,7 +33,7 @@ gatekeeper = LLMGatekeeper()
 async def pipeline_run():
     # Load deals dataset
     matches = 0
-    with open('../bankruptcy-retrieval/data/deals_dataset.json', 'r') as f:
+    with open('deals_dataset_subset.json', 'r') as f:
         deals = json.load(f)
 
     # 1. 5-Deal Exclusion Logic - ZERO API / Browser calls for these
@@ -50,9 +50,9 @@ async def pipeline_run():
             
         active_deals.append(deal)
 
-    if "--test" in sys.argv:
-        print("Running in TEST mode: Limiting to first 5 active deals.")
-        active_deals = active_deals[:5]
+    # if "--test" in sys.argv:
+    #     print("Running in TEST mode: Limiting to first 5 active deals.")
+    #     active_deals = active_deals[:5]
 
     if not active_deals:
         print("No active deals found.")

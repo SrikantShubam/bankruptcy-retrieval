@@ -1,0 +1,16 @@
+[
+  {
+    "deal_id": "rite-aid-2023",
+    "company_name": "Rite Aid",
+    "filing_year": 2023,
+    "court": "D.N.J.",
+    "chapter": 11,
+    "already_processed": false,
+    "claims_agent": "Kroll",
+    "target_doc_types": [
+      "First Day Declaration",
+      "DIP Motion"
+    ],
+    "petition_date": "2023-10-15"
+  }
+]

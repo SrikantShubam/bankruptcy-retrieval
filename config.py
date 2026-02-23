@@ -14,7 +14,7 @@ KROLL_SELECTORS = {
 }
 
 KROLL_SEARCH_KEYWORDS = [
-    "declaration in support",
+    "declaration in support of first day",
     "first day",
     "DIP",
     "debtor in possession",
