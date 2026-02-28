@@ -11,6 +11,7 @@ import httpx
 from dateutil.parser import parse as parse_date
 
 from shared.telemetry import TelemetryLogger
+from shared.config import COURTLISTENER_API_TOKEN
 from session_manager import (
     safe_new_page,
     detect_cloudflare_challenge,
@@ -98,28 +99,41 @@ async def scout_kroll(page: Page, company_name: str, filing_year: int) -> List[D
             print(f"Navigating to Kroll case URL: {url}")
             
         await page.goto(url, wait_until="networkidle", timeout=45000)
+        final_url = page.url
         
         # Screenshot immediately — before ANY other logic
         await page.screenshot(path=f"debug_kroll_{deal_id}_loaded.png")
         title = await page.title()
         print(f"Kroll page title: {title}")
-        print(f"Kroll URL: {page.url}")
+        print(f"Kroll URL: {final_url}")
+        
+        # If redirected away from restructuring.ra.kroll.com, slug is wrong
+        if "restructuring.ra.kroll.com" not in final_url:
+            print(f"Kroll redirect detected for {company_name}: {final_url}")
+            return []
         
         # Check we're on a real case page, not the generic listing
-        if "restructuring-administration-cases" in page.url or \
-           "Restructuring Administration Cases" in await page.title():
+        if "restructuring-administration-cases" in final_url or \
+           "Restructuring Administration Cases" in title:
             # Slug didn't match, skip this case
             return []
             
-        # Click the Docket tab from the left sidebar
+        # Since URL already has ?tab=docket, wait for the table instead of clicking
         try:
-            await page.click("a:text('Docket') >> visible=true", timeout=10000)
-            await page.wait_for_load_state("networkidle", timeout=20000)
-            await page.screenshot(path=f"debug_kroll_{deal_id}_docket.png")
-        except Exception as e:
-            print(f"Failed to click Docket tab: {e}")
-            await page.screenshot(path=f"debug_kroll_docket_fail_{deal_id}.png")
-            return []
+            await page.wait_for_selector("table tbody tr", timeout=15000)
+            await page.screenshot(path=f"debug_kroll_{deal_id}_docket_table.png")
+        except Exception:
+            # Table didn't appear — check if we need to click the tab
+            try:
+                docket_link = await page.query_selector("a:has-text('Docket')")
+                if docket_link:
+                    await docket_link.click()
+                    await page.wait_for_selector("table tbody tr", timeout=15000)
+                    await page.screenshot(path=f"debug_kroll_{deal_id}_docket_clicked.png")
+            except Exception as e:
+                print(f"Kroll docket table never appeared for {company_name}: {e}")
+                return []
+
             
         search_box = await page.query_selector(
             "input[placeholder*=\"'motion'\"], input[placeholder*=\"'123'\"]"
@@ -150,14 +164,34 @@ async def scout_kroll(page: Page, company_name: str, filing_year: int) -> List[D
                 text = await row.inner_text()
                 text_lower = text.lower()
                 
-                # Check keyword match
-                keyword_hit = any(kw in text_lower for kw in [
-                    "first day", "dip motion", "debtor in possession",
-                    "cash collateral", "declaration in support",
-                    "capital structure", "prepetition"
-                ])
-                if not keyword_hit:
-                    continue
+                # Must contain at least one strong positive signal
+                POSITIVE_SIGNALS = [
+                    "first day declaration",
+                    "declaration in support of first day",
+                    "declaration in support of chapter 11 petition",
+                    "in support of chapter 11",
+                    "dip financing motion",
+                    "debtor in possession financing motion",
+                    "cash collateral motion",
+                ]
+                HARD_REJECT = [
+                    "motion for relief from stay",
+                    "relief from stay", 
+                    "certificate of service",
+                    "notice of",
+                    "monthly operating report",
+                    "fee application",
+                    "retention application",
+                    "order regarding",  # orders are not declarations
+                    "order granting",
+                    "order approving",
+                ]
+
+                has_signal = any(s in text_lower for s in POSITIVE_SIGNALS)
+                is_noise = any(r in text_lower for r in HARD_REJECT)
+
+                if not has_signal or is_noise:
+                    continue  # Skip this row
                 
                 # Extract link (broadened selector from Bug 3 fix)
                 links = await row.query_selector_all("a[href]")
@@ -379,7 +413,7 @@ async def scout_with_fallback(browser: BrowserContext, deal: Dict[str, Any]) -> 
     """
     company_name = deal["company_name"]
     filing_year = deal["filing_year"]
-    claims_agent = deal.get("claims_agent", "").lower()
+    claims_agent = (deal.get("claims_agent") or "").lower()
     
     page, browser = await safe_new_page(browser)
     results = []
@@ -405,7 +439,7 @@ async def scout_with_fallback(browser: BrowserContext, deal: Dict[str, Any]) -> 
             
     # Do NOT close tab, safe_new_page keeps 3 tabs limit and closing inside exception loop crashes Playwright
             
-    # 2. CourtListener RECAP API Fallback (mocked for Worktree B specific scope)
+    # 2. CourtListener RECAP API Fallback
     if not results:
         print(json.dumps({
             "event": "fallback_triggered", 
@@ -414,35 +448,71 @@ async def scout_with_fallback(browser: BrowserContext, deal: Dict[str, Any]) -> 
             "deal_id": deal["deal_id"]
         }))
         
+        # V4 search returns docket-level results; documents are nested in recap_documents[]
+        RECAP_QUERIES = [
+            f'"{company_name}" "first day"',
+            f'"{company_name}" "declaration in support" "chapter 11"',
+            f'"{company_name}" "DIP financing"',
+        ]
+        
+        # Keywords to match inside recap_documents[].description
+        DOC_KEYWORDS = [
+            "first day", "declaration in support", "chapter 11 petition",
+            "dip financing", "debtor in possession", "cash collateral",
+        ]
+        
+        results_found = []
         try:
+            headers = {}
+            if COURTLISTENER_API_TOKEN:
+                headers["Authorization"] = f"Token {COURTLISTENER_API_TOKEN}"
+            
             async with httpx.AsyncClient() as client:
-                response = await client.get("https://www.courtlistener.com/api/rest/v4/search/", 
-                    params={
-                        "q": f'"{company_name}" (short_description:"first day" OR short_description:"DIP")',
-                        "type": "r",
-                        "available_only": "on",
-                        "filed_after": f"{filing_year}-01-01",
-                        "filed_before": f"{filing_year}-12-31",
-                    },
-                    timeout=30.0
-                )
-                if response.status_code == 200:
-                    data = response.json()
-                    for item in data.get("results", [])[:3]:
-                        # Typical RECAP search result fields
-                        title = item.get("short_description") or item.get("docket_entry") or "Unknown Title"
-                        # Make path absolute
-                        path = item.get("filepath_local", "")
-                        url = f"https://storage.courtlistener.com/{path}" if path else None
-                        
-                        results.append({
-                            "docket_entry_id": str(item.get("id", "CL_" + deal["deal_id"])),
-                            "docket_title": title,
-                            "filing_date": item.get("date_filed"),
-                            "resolved_pdf_url": url,
-                            "attachment_descriptions": [],
-                            "source": "courtlistener"
-                        })
+                for q in RECAP_QUERIES:
+                    response = await client.get(
+                        "https://www.courtlistener.com/api/rest/v4/search/",
+                        params={
+                            "q": q,
+                            "type": "r",
+                            "available_only": "on",
+                            "order_by": "score desc",
+                            "filed_after": f"{filing_year}-01-01",
+                            "filed_before": f"{filing_year}-12-31",
+                        },
+                        headers=headers,
+                        timeout=30.0,
+                    )
+                    print(f"CourtListener query: {q[:60]}... -> {response.status_code}")
+                    if response.status_code == 200:
+                        data = response.json()
+                        for docket in data.get("results", []):
+                            date_filed = (docket.get("dateFiled") or "")[:10]
+                            # Iterate nested recap_documents
+                            for doc in docket.get("recap_documents", []):
+                                filepath = doc.get("filepath_local", "")
+                                if not filepath or not doc.get("is_available", False):
+                                    continue
+                                # Use description (full title), fallback to short_description
+                                title = doc.get("description", "") or doc.get("short_description", "")
+                                if not title or len(title) < 10:
+                                    continue
+                                title_lower = title.lower()
+                                # Check if document matches any keyword
+                                if not any(kw in title_lower for kw in DOC_KEYWORDS):
+                                    continue
+                                print(f"  RECAP candidate: {title[:80]}")
+                                results_found.append({
+                                    "docket_entry_id": str(doc.get("id", f"CL_{deal['deal_id']}")),
+                                    "docket_title": title.strip(),
+                                    "filing_date": doc.get("entry_date_filed") or date_filed,
+                                    "resolved_pdf_url": f"https://storage.courtlistener.com/{filepath}",
+                                    "attachment_descriptions": [],
+                                    "source": "courtlistener",
+                                })
+                        if results_found:
+                            break  # stop at first query that returns results
+            
+            results = results_found[:3]
         except Exception as e:
             print(f"Fallback RECAP V4 API Error for {company_name}: {e}")
         

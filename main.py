@@ -33,22 +33,47 @@ gatekeeper = LLMGatekeeper()
 async def pipeline_run():
     # Load deals dataset
     matches = 0
-    with open('deals_dataset_subset.json', 'r') as f:
-        deals = json.load(f)
+    with open('../bankruptcy-retrieval/data/deals_dataset.json', 'r') as f:
+        all_deals = json.load(f)
 
-    # 1. 5-Deal Exclusion Logic - ZERO API / Browser calls for these
-    active_deals = []
-    
+    STANDARD_TEST_DEALS = [
+        "wework-2023", "rite-aid-2023", "blockfi-2022",
+        "bed-bath-beyond-2023", "yellow-corp-2023", "mitchells-butlers-2023",
+        "kidoz-2023", "svb-financial-2023", "talen-energy-2023", "medical-decoy-c"
+    ]
+
+    if "--standard-test" in sys.argv:
+        deals = [d for d in all_deals if d["deal_id"] in STANDARD_TEST_DEALS]
+        deals.sort(key=lambda d: STANDARD_TEST_DEALS.index(d["deal_id"]))
+    elif "--test" in sys.argv:
+        test_deal = [d for d in all_deals if d["company_name"] == "Rite Aid"]
+        if test_deal:
+            deals = test_deal
+        else:
+            deals = [d for d in all_deals if not d.get("already_processed")][:3]
+    else:
+        deals = list(all_deals)  # full run
+
+    # Avoid processing already done deals unless we are overriding them
+    if "--force" not in sys.argv:
+        active_deals = [d for d in deals if not d.get("already_processed")]
+    else:
+        active_deals = list(deals)
+
     # Simulating time relative to overall run for elapsed_seconds
     start_time = datetime.now(timezone.utc)
     
-    for deal in deals:
-        if deal["company_name"] in EXCLUDED_SET or deal.get("already_processed"):
+    # Pre-filter active deals list to only non-excluded
+    final_active_deals = []
+    for deal in active_deals:
+        if deal["company_name"] in EXCLUDED_SET:
             # Emit log directly to the telemetry system
             logger.log_exclusion_skip(deal)
             continue
             
-        active_deals.append(deal)
+        final_active_deals.append(deal)
+        
+    active_deals = final_active_deals
 
     # if "--test" in sys.argv:
     #     print("Running in TEST mode: Limiting to first 5 active deals.")
