@@ -261,6 +261,10 @@ class TelemetryLogger:
         )
         self._append(event)
 
+        # Update total API calls counter (only add if actual API calls were made)
+        if total_api_calls > 0:
+            self._api_calls_total += total_api_calls
+
     # Convenience pass-through events (Worktree B / C specific)
 
     def log_event(self, event_type: str, deal: dict, **kwargs: Any) -> None:

@@ -25,6 +25,13 @@ from graph import build_graph, PipelineState
 from shared.telemetry import TelemetryLogger
 from shared.config import is_excluded
 
+# Standard test deals for quick validation
+STANDARD_TEST_DEALS = [
+    "wework-2023", "rite-aid-2023", "blockfi-2022",
+    "bed-bath-beyond-2023", "yellow-corp-2023", "mitchells-butlers-2023",
+    "kidoz-2023", "svb-financial-2023", "talen-energy-2023", "medical-decoy-c"
+]
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -54,11 +61,22 @@ async def run_pipeline():
     logger.info("=" * 60)
     logger.info("Worktree C - Autonomous Agentic Pipeline")
     logger.info("=" * 60)
-    
+
     # Load deals dataset
     if not DEALS_DATASET_PATH.exists():
         logger.error(f"Deals dataset not found: {DEALS_DATASET_PATH}")
         return
+
+    # Check for standard test mode
+    if "--standard-test" in sys.argv:
+        with open(DEALS_DATASET_PATH) as f:
+            all_deals = json.load(f)
+        deals = [d for d in all_deals if d["deal_id"] in STANDARD_TEST_DEALS]
+        deals.sort(key=lambda d: STANDARD_TEST_DEALS.index(d["deal_id"]))
+        logger.info(f"Running standard test with {len(deals)} deals")
+    else:
+        with open(DEALS_DATASET_PATH) as f:
+            deals = json.load(f)
     
     with open(DEALS_DATASET_PATH) as f:
         deals = json.load(f)
@@ -141,6 +159,9 @@ async def run_pipeline():
                 total_llm_calls=len(final_state.get("gatekeeper_results", [])),
                 downloaded_file=downloaded_file,
             )
+
+            # Debug: Log API calls after telemetry
+            logger.debug(f"[MAIN] API calls after telemetry for {deal_id}: {api_calls}")
             
             processed += 1
             

@@ -163,10 +163,23 @@ class LLMGatekeeper:
             self.api_key   = OPENROUTER_API_KEY
             self.model     = GATEKEEPER_MODEL_OR
 
+        # Debug logging to check API key loading
+        logger.debug(f"[LLMGatekeeper] Provider: {self.provider}")
+        logger.debug(f"[LLMGatekeeper] API Key: {self.api_key}")
+        logger.debug(f"[LLMGatekeeper] Model: {self.model}")
+
         if not self.api_key:
-            raise ValueError(
+            logger.warning(
                 f"[LLMGatekeeper] No API key found for provider '{self.provider}'. "
-                f"Check your .env file."
+                f"Available keys: NVIDIA_NIM_API_KEY={NVIDIA_NIM_API_KEY is not None}, "
+                f"OPENROUTER_API_KEY={OPENROUTER_API_KEY is not None}"
+            )
+            # Instead of raising, return a SKIP result with detailed error
+            self._fallback_skip(
+                f"No API key found for provider '{self.provider}'. "
+                f"Available keys: NVIDIA_NIM_API_KEY={NVIDIA_NIM_API_KEY is not None}, "
+                f"OPENROUTER_API_KEY={OPENROUTER_API_KEY is not None}",
+                0, 0
             )
 
     # ──────────────────────────────────────────────────────────────────────

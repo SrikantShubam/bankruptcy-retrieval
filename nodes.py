@@ -39,6 +39,15 @@ from tools import (
     search_courtlistener_fulltext,
 )
 
+# Field-targeted queries for bankruptcy-related documents
+FIELD_QUERIES = [
+    'short_description:"first day"',
+    'short_description:"declaration in support" short_description:"chapter 11"',
+    'short_description:"DIP financing"',
+    'short_description:"debtor in possession financing"',
+    'short_description:"cash collateral motion"',
+]
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Exclusion Check Node
@@ -83,83 +92,78 @@ async def scout_node(state: PipelineState) -> PipelineState:
     from shared.config import (
         COURTLISTENER_API_TOKEN,
     )
-    
+
     deal = state.get("deal", {})
     deal_id = deal.get("deal_id", "")
     company_name = deal.get("company_name", "")
     filing_year = deal.get("filing_year", 2023)
     claims_agent = deal.get("claims_agent")
-    
+
     headers = {"Authorization": f"Token {COURTLISTENER_API_TOKEN}"} if COURTLISTENER_API_TOKEN else {}
     candidates = []
     api_calls_made = 0
     search_attempts = state.get("search_attempts", 0) + 1
-    
-    # ── Phase 1: CourtListener V4 search ──
+
+    # ── Phase 1: CourtListener V4 search with field-targeted queries ──
     async with httpx.AsyncClient(timeout=30.0) as client:
-        for keyword in PRIORITY_KEYWORDS[:MAX_KEYWORD_QUERIES_PER_DEAL]:
+        for field_query in FIELD_QUERIES[:MAX_KEYWORD_QUERIES_PER_DEAL]:
             params = {
-                "q": f'"{company_name}" {keyword}',
+                "q": f'"{company_name}" {field_query}',
                 "type": "r",  # RECAP documents
                 "available_only": "on",
                 "order_by": "score desc",
                 "filed_after": f"{filing_year}-01-01",
                 "filed_before": f"{filing_year}-12-31",
             }
-            
+
             response = await client.get(
                 COURTLISTENER_V4_SEARCH,
                 params=params,
                 headers=headers
             )
             api_calls_made += 1
-            
+
             if response.status_code == 200:
                 search_data = response.json()
                 results = search_data.get("results", [])
-                
+
                 if results:
-                    # Extract candidates from RECAP documents
+                    # Extract candidates from top-level fields (V4 search returns flat results)
                     for result in results:
+                        if not result.get("is_available", False):
+                            continue
+
                         case_name = result.get("caseName", company_name)
                         date_filed = result.get("dateFiled", "")[:10] if result.get("dateFiled") else ""
-                        
-                        recap_docs = result.get("recap_documents", [])
-                        for doc in recap_docs:
-                            if not doc.get("is_available", False):
-                                continue
-                            
-                            description = doc.get("description", "")
-                            if not description:
-                                description = doc.get("short_description", "")
-                            
-                            filepath = doc.get("filepath_local", "")
-                            if filepath:
-                                pdf_url = f"https://storage.courtlistener.com/{filepath}"
-                            else:
-                                continue
-                            
-                            if not pdf_url:
-                                continue
-                            
-                            candidate = {
-                                "deal_id": deal_id,
-                                "source": "courtlistener",
-                                "docket_entry_id": str(doc.get("docket_entry_id", "")),
-                                "docket_title": description or case_name,
-                                "filing_date": date_filed,
-                                "attachment_descriptions": [],
-                                "resolved_pdf_url": pdf_url,
-                                "api_calls_consumed": api_calls_made,
-                            }
-                            candidates.append(candidate)
-                            break  # Found one, stop
-                        
-                        if candidates:
-                            break  # Found candidate, stop results
-                    
+
+                        description = result.get("short_description", "")
+                        if not description:
+                            description = case_name
+
+                        filepath = result.get("filepath_local", "")
+                        if filepath:
+                            pdf_url = f"https://storage.courtlistener.com/{filepath}"
+                        else:
+                            continue
+
+                        if not pdf_url:
+                            continue
+
+                        candidate = {
+                            "deal_id": deal_id,
+                            "source": "courtlistener",
+                            "docket_entry_id": str(result.get("id", "")),
+                            "docket_title": description,
+                            "filing_date": date_filed,
+                            "attachment_descriptions": [],
+                            "resolved_pdf_url": pdf_url,
+                            "api_calls_consumed": api_calls_made,
+                        }
+                        candidates.append(candidate)
+                        break  # Found one, stop
+
                     if candidates:
-                        break  # Found candidate, stop keywords
+                        break  # Found candidate, stop field queries
     
     # ── Phase 2: Claims agent browser tool fallback ──
     if not candidates and claims_agent:
@@ -175,6 +179,11 @@ async def scout_node(state: PipelineState) -> PipelineState:
         except Exception as e:
             logger.warning(f"Browser tool failed for {deal_id}: {e}")
     
+    # Debug: Log final API calls state
+    final_api_calls = state.get("api_calls_used", 0) + api_calls_made
+    logger.debug(f"[SCOUT] Final API calls after scout_node: {final_api_calls}")
+    logger.debug(f"[SCOUT] API calls made in this node: {api_calls_made}")
+
     return {
         **state,
         "search_attempts": search_attempts,
