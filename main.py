@@ -75,9 +75,7 @@ from shared.telemetry import TelemetryLogger
 
 # Import worktree-specific modules
 from scout import (
-    find_docket,
-    find_docket_entries,
-    get_recap_document_metadata,
+    find_document_for_deal,
     close_http_client as close_scout_client,
     DailyBudgetExhausted
 )
@@ -98,6 +96,13 @@ logger = logging.getLogger(__name__)
 DATASET_PATH = "../bankruptcy-retrieval/data/deals_dataset.json"
 GROUND_TRUTH_PATH = "../bankruptcy-retrieval/data/ground_truth.json"
 WORKTREE_NAME = "A"
+
+# Standard test deals for quick validation
+STANDARD_TEST_DEALS = [
+    "wework-2023", "rite-aid-2023", "blockfi-2022",
+    "bed-bath-beyond-2023", "yellow-corp-2023", "mitchells-butlers-2023",
+    "kidoz-2023", "svb-financial-2023", "talen-energy-2023", "medical-decoy-c"
+]
 
 async def process_deal(deal: Dict[str, Any], gatekeeper: LLMGatekeeper, telemetry: TelemetryLogger) -> None:
     """
@@ -382,11 +387,19 @@ async def main():
     # Load dataset
     try:
         with open(DATASET_PATH, 'r') as f:
-            deals = json.load(f)
-        logger.info(f"Loaded {len(deals)} deals from dataset")
+            all_deals = json.load(f)
+        logger.info(f"Loaded {len(all_deals)} deals from dataset")
     except Exception as e:
         logger.error(f"Failed to load dataset: {str(e)}")
         return
+
+    # Check for standard test flag
+    if "--standard-test" in sys.argv:
+        deals = [d for d in all_deals if d["deal_id"] in STANDARD_TEST_DEALS]
+        deals.sort(key=lambda d: STANDARD_TEST_DEALS.index(d["deal_id"]) if d["deal_id"] in STANDARD_TEST_DEALS else len(STANDARD_TEST_DEALS))
+        logger.info(f"Running standard test on {len(deals)} deals")
+    else:
+        deals = all_deals
 
     # Initialize telemetry
     telemetry = TelemetryLogger(

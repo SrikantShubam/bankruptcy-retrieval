@@ -14,16 +14,22 @@ import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 import aiolimiter
 
+# Load environment variables first
+from dotenv import load_dotenv
+import os
+load_dotenv('.env')  # explicit path
+
 # Add the shared directory to the path
 import sys
 sys.path.insert(0, '../bankruptcy-retrieval')
 
 from shared.config import (
-    COURTLISTENER_API_TOKEN,
     COURTLISTENER_BASE_URL,
     COURTLISTENER_V4_SEARCH_URL,
     MAX_KEYWORD_QUERIES_PER_DEAL,
-    get_court_slug
+    MAX_API_CALLS_PER_DAY,
+    get_court_slug,
+    PRIORITY_KEYWORDS
 )
 from config import RATE_LIMIT_STATE_FILE
 
@@ -71,11 +77,85 @@ def check_and_update_rate_limit() -> None:
     # Save the updated state
     save_rate_limit_state(state)
 
-# HTTP client setup
-http_client = httpx.AsyncClient(
-    headers={"Authorization": f"Token {COURTLISTENER_API_TOKEN}"},
-    timeout=30.0
-)
+# Auth header function
+async def get_auth_headers() -> dict:
+    token = os.environ.get('COURTLISTENER_API_TOKEN')
+    if not token:
+        raise ValueError("COURTLISTENER_API_TOKEN not set in environment")
+    return {"Authorization": f"Token {token}"}
+
+async def find_document_for_deal(
+    company_name: str,
+    filing_year: int,
+    court: str,
+) -> Optional[Dict[str, Any]]:
+    """
+    Single-phase: search V4 for the first day declaration directly.
+    Returns a candidate dict or None.
+    """
+    SEARCH_URL = "https://www.courtlistener.com/api/rest/v4/search/"
+
+    FIELD_QUERIES = [
+        'short_description:"first day"',
+        'short_description:"declaration in support" short_description:"chapter 11"',
+        'short_description:"DIP financing"',
+        'short_description:"debtor in possession financing"',
+        'short_description:"cash collateral motion"',
+    ]
+
+    calls = 0
+    for field_query in FIELD_QUERIES[:MAX_KEYWORD_QUERIES_PER_DEAL]:
+        params = {
+            "q": f'"{company_name}" {field_query}',
+            "type": "r",
+            "available_only": "on",
+            "order_by": "score desc",
+            "filed_after": f"{filing_year}-01-01",
+            "filed_before": f"{filing_year}-12-31",
+        }
+
+        # Add court filter if provided
+        court_slug = get_court_slug(court)
+        if court_slug:
+            params["court"] = court_slug
+
+        print(f"DEBUG: Querying with params: {params}")
+
+        try:
+            response = await rate_limited_api_call(SEARCH_URL, params)
+            calls += 1
+            data = response.json()
+            results = data.get("results", [])
+
+            print(f"DEBUG: Got {len(results)} results")
+
+            for result in results:
+                filepath = result.get("filepath_local", "")
+                print(f"DEBUG: Result filepath: {filepath}, is_available: {result.get('is_available', False)}")
+
+                if not filepath or not result.get("is_available", False):
+                    continue
+
+                title = result.get("short_description", "") or result.get("caseName", "")
+                print(f"DEBUG: Result title: {title}")
+
+                if not title or len(title) < 10:
+                    continue
+
+                return {
+                    "docket_entry_id": str(result.get("id", "")),
+                    "docket_title": title,
+                    "filing_date": (result.get("dateFiled") or "")[:10],
+                    "attachment_descriptions": [],
+                    "resolved_pdf_url": f"https://storage.courtlistener.com/{filepath}",
+                    "api_calls_consumed": calls,
+                    "source": "courtlistener",
+                }
+        except Exception as e:
+            print(f"DEBUG: Exception occurred: {e}")
+            continue
+
+    return None
 
 # Retry configuration
 retry_config = {
@@ -93,152 +173,15 @@ async def rate_limited_api_call(url: str, params: Dict[str, Any]) -> httpx.Respo
     # Wait for per-second rate limiter
     await rate_limiter.acquire()
 
-    # Make the API call
-    response = await http_client.get(url, params=params)
-    response.raise_for_status()
-    return response
+    # Get auth headers and make the API call
+    headers = await get_auth_headers()
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.get(url, params=params, headers=headers)
+        response.raise_for_status()
+        return response
 
-async def find_docket(company_name: str, filing_year: int, court: str, client: httpx.AsyncClient) -> Optional[Dict[str, Any]]:
-    """
-    Phase 1: Find the docket for a company's bankruptcy case.
-
-    Args:
-        company_name: Name of the company
-        filing_year: Year of filing
-        court: Court name (e.g., "S.D.N.Y.")
-        client: HTTP client to use
-
-    Returns:
-        Docket data dict or None if not found
-    """
-    court_slug = get_court_slug(court)
-
-    # Build query parameters for V4 search endpoint
-    params = {
-        "q": f'"{company_name}" chapter:11',
-        "type": "r",  # docket type
-        "available_only": "on",
-        "order_by": "score desc",
-        "filed_after": f"{filing_year}-01-01",
-        "filed_before": f"{filing_year}-12-31",
-    }
-
-    # Add court filter if we have a valid slug
-    if court_slug:
-        params["court"] = court_slug
-
-    url = COURTLISTENER_V4_SEARCH_URL
-
-    try:
-        response = await rate_limited_api_call(url, params)
-        data = response.json()
-
-        # Return the first result if any found
-        if data.get("results"):
-            return data["results"][0]
-        return None
-    except httpx.HTTPStatusError as e:
-        if e.response.status_code == 404:
-            return None
-        raise
-    except DailyBudgetExhausted:
-        raise
-    except Exception:
-        return None
-
-async def find_docket_entries(docket_id: str, keywords: List[str], client: httpx.AsyncClient) -> List[Dict[str, Any]]:
-    """
-    Phase 2: Find docket entries matching priority keywords.
-
-    Args:
-        docket_id: The docket ID to search within
-        keywords: List of keywords to search for (in priority order)
-        client: HTTP client to use
-
-    Returns:
-        List of matching docket entries
-    """
-    found_entries = []
-    queries_made = 0
-
-    for keyword in keywords[:MAX_KEYWORD_QUERIES_PER_DEAL]:
-        if queries_made >= MAX_KEYWORD_QUERIES_PER_DEAL:
-            break
-
-        # Build query for V4 search endpoint
-        # Search within the specific docket by its ID in the query
-        params = {
-            "q": f'docket_id:{docket_id} "{keyword}"',
-            "type": "r",  # docket type
-            "available_only": "on",
-            "order_by": "score desc",
-            "filed_after": "2019-01-01",  # Broad range to catch older cases
-        }
-
-        url = COURTLISTENER_V4_SEARCH_URL
-
-        try:
-            response = await rate_limited_api_call(url, params)
-            queries_made += 1
-
-            data = response.json()
-            results = data.get("results", [])
-
-            # Add entries to our found list
-            for entry in results:
-                # Only add if we haven't seen this entry ID before
-                if not any(e.get("id") == entry.get("id") for e in found_entries):
-                    found_entries.append(entry)
-
-            # If we found entries, we might have what we need
-            if results:
-                # For now, we'll return what we have - in a real implementation,
-                # we might want to continue searching for better matches
-                pass
-
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 404:
-                continue
-            raise
-        except DailyBudgetExhausted:
-            raise
-        except Exception:
-            # Continue with next keyword on any other error
-            continue
-
-    return found_entries
-
-async def get_recap_document_metadata(doc_id: str, client: httpx.AsyncClient) -> Optional[Dict[str, Any]]:
-    """
-    Phase 3: Get metadata for a RECAP document.
-
-    Args:
-        doc_id: The docket entry ID
-        client: HTTP client to use
-
-    Returns:
-        Document metadata dict or None if not found
-    """
-    # For V4, we'll use the BASE_URL for direct document lookup
-    url = f"{COURTLISTENER_BASE_URL}/recap-documents/{doc_id}/"
-    params = {
-        "fields": "id,description,filepath_local,is_available"
-    }
-
-    try:
-        response = await rate_limited_api_call(url, params)
-        data = response.json()
-        return data
-    except httpx.HTTPStatusError as e:
-        if e.response.status_code == 404:
-            return None
-        raise
-    except DailyBudgetExhausted:
-        raise
-    except Exception:
-        return None
 
 # Close the HTTP client when done
 async def close_http_client():
-    """Close the HTTP client"""
-    await http_client.aclose()
+    """Close the HTTP client - no-op since we use context managers now"""
+    pass
