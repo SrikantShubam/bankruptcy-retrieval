@@ -131,156 +131,62 @@ async def process_deal(deal: Dict[str, Any], gatekeeper: LLMGatekeeper, telemetr
         )
         return
 
-    # Initialize counters
-    api_calls_for_deal = 0
-
     try:
-        # Phase 1: Find docket
-        logger.info(f"Searching for docket: {company_name}")
-        docket = await find_docket(
+        # Single-phase search using V4 API
+        logger.info(f"Searching for document: {company_name}")
+        candidate_data = await find_document_for_deal(
             company_name=company_name,
             filing_year=deal.get("filing_year", 2023),
-            court=deal.get("court", ""),
-            client=None  # Using module-level client
+            court=deal.get("court", "")
         )
-        api_calls_for_deal += 1
+
+        api_calls_consumed = candidate_data.get("api_calls_consumed", 0) if candidate_data else 0
 
         # Log the scout query
         telemetry.log_scout_query(
             deal=deal,
             source="courtlistener",
             query_params={
-                "case_name__icontains": company_name,
-                "date_filed__gte": f"{deal.get('filing_year', 2023)}-01-01",
-                "date_filed__lte": f"{deal.get('filing_year', 2023)}-12-31",
-                "court": deal.get("court", ""),
-                "chapter": 11
+                "company_name": company_name,
+                "filing_year": deal.get("filing_year", 2023),
+                "court": deal.get("court", "")
             },
-            results_count=1 if docket else 0,
-            api_calls_this_query=1
+            results_count=1 if candidate_data else 0,
+            api_calls_this_query=api_calls_consumed
         )
 
-        if not docket:
-            logger.info(f"No docket found for: {deal_id}")
+        if not candidate_data:
+            logger.info(f"No relevant document found for: {deal_id}")
             telemetry.log_pipeline_terminal(
                 deal=deal,
                 pipeline_status="NOT_FOUND",
-                total_api_calls=api_calls_for_deal,
+                total_api_calls=api_calls_consumed,
                 total_llm_calls=0
             )
             return
 
-        docket_id = docket.get("id")
-        logger.info(f"Found docket ID: {docket_id}")
-
-        # Phase 2: Find docket entries with priority keywords
-        logger.info(f"Searching for docket entries: {docket_id}")
-        entries = await find_docket_entries(
-            docket_id=docket_id,
-            keywords=PRIORITY_KEYWORDS,
-            client=None  # Using module-level client
-        )
-
-        # Count API calls made in find_docket_entries
-        # We made one call per keyword (up to MAX_KEYWORD_QUERIES_PER_DEAL)
-        keyword_queries_made = min(len(PRIORITY_KEYWORDS), MAX_KEYWORD_QUERIES_PER_DEAL)
-        api_calls_for_deal += keyword_queries_made
-
-        if not entries:
-            logger.info(f"No relevant entries found for: {deal_id}")
-            telemetry.log_pipeline_terminal(
-                deal=deal,
-                pipeline_status="NOT_FOUND",
-                total_api_calls=api_calls_for_deal,
-                total_llm_calls=0
-            )
-            return
-
-        logger.info(f"Found {len(entries)} potential entries for: {deal_id}")
-
-        # For simplicity, we'll process the first entry that has recap documents
-        selected_entry = None
-        for entry in entries:
-            if entry.get("recap_documents"):
-                selected_entry = entry
-                break
-
-        if not selected_entry:
-            logger.info(f"No entries with recap documents for: {deal_id}")
-            telemetry.log_pipeline_terminal(
-                deal=deal,
-                pipeline_status="NOT_FOUND",
-                total_api_calls=api_calls_for_deal,
-                total_llm_calls=0
-            )
-            return
-
-        entry_id = selected_entry.get("id")
-        entry_description = selected_entry.get("description", "")
-        entry_date_filed = selected_entry.get("date_filed", "")
-
-        # Get the first recap document
-        recap_docs = selected_entry.get("recap_documents", [])
-        if not recap_docs:
-            logger.info(f"No recap documents found for entry: {entry_id}")
-            telemetry.log_pipeline_terminal(
-                deal=deal,
-                pipeline_status="NOT_FOUND",
-                total_api_calls=api_calls_for_deal,
-                total_llm_calls=0
-            )
-            return
-
-        recap_doc = recap_docs[0]
-        recap_doc_id = recap_doc.get("id")
-
-        # Phase 3: Get recap document metadata
-        logger.info(f"Getting metadata for recap document: {recap_doc_id}")
-        doc_metadata = await get_recap_document_metadata(
-            doc_id=recap_doc_id,
-            client=None  # Using module-level client
-        )
-        api_calls_for_deal += 1
-
-        if not doc_metadata:
-            logger.info(f"Failed to get metadata for recap document: {recap_doc_id}")
-            telemetry.log_pipeline_terminal(
-                deal=deal,
-                pipeline_status="NOT_FOUND",
-                total_api_calls=api_calls_for_deal,
-                total_llm_calls=0
-            )
-            return
-
-        doc_description = doc_metadata.get("description", "")
-        filepath_local = doc_metadata.get("filepath_local")
-        is_available = doc_metadata.get("is_available", False)
-
-        # Construct the full PDF URL if available
-        resolved_pdf_url = None
-        if filepath_local:
-            resolved_pdf_url = f"/recap/{filepath_local.lstrip('/')}" if not filepath_local.startswith("/recap/") else filepath_local
-
-        # Phase 4: Gatekeeper evaluation
-        logger.info(f"Evaluating with Gatekeeper: {entry_id}")
+        # Create candidate document for gatekeeper
+        logger.info(f"Found document for: {deal_id}")
         candidate = CandidateDocument(
             deal_id=deal_id,
-            source="courtlistener",
-            docket_entry_id=str(entry_id),
-            docket_title=entry_description,
-            filing_date=entry_date_filed,
-            attachment_descriptions=[doc_description] if doc_description else [],
-            resolved_pdf_url=resolved_pdf_url,
-            api_calls_consumed=api_calls_for_deal
+            source=candidate_data["source"],
+            docket_entry_id=candidate_data["docket_entry_id"],
+            docket_title=candidate_data["docket_title"],
+            filing_date=candidate_data["filing_date"],
+            attachment_descriptions=candidate_data["attachment_descriptions"],
+            resolved_pdf_url=candidate_data["resolved_pdf_url"],
+            api_calls_consumed=api_calls_consumed
         )
 
+        # Gatekeeper evaluation
+        logger.info(f"Evaluating with Gatekeeper: {deal_id}")
         gatekeeper_result = await gatekeeper.evaluate(candidate)
 
         # Log gatekeeper decision
         telemetry.log_gatekeeper_decision(
             deal=deal,
-            docket_title=entry_description,
-            attachment_descriptions=[doc_description] if doc_description else [],
+            docket_title=candidate_data["docket_title"],
+            attachment_descriptions=candidate_data["attachment_descriptions"],
             llm_model=gatekeeper_result.model_used,
             verdict=gatekeeper_result.verdict,
             score=gatekeeper_result.score,
@@ -293,34 +199,15 @@ async def process_deal(deal: Dict[str, Any], gatekeeper: LLMGatekeeper, telemetr
             telemetry.log_pipeline_terminal(
                 deal=deal,
                 pipeline_status="SKIPPED",
-                total_api_calls=api_calls_for_deal,
+                total_api_calls=api_calls_consumed,
                 total_llm_calls=1
             )
             return
 
-        # Phase 5: Fetch the PDF
-        logger.info(f"Downloading PDF: {resolved_pdf_url}")
-        if not resolved_pdf_url or not is_available:
-            logger.info(f"PDF not available in RECAP: {deal_id}")
-            telemetry.log_fetch_result(
-                deal=deal,
-                success=False,
-                local_file_path=None,
-                file_size_bytes=None,
-                fetch_method="httpx_stream",
-                bot_bypass_used=False,
-                failure_reason="not_in_recap"
-            )
-            telemetry.log_pipeline_terminal(
-                deal=deal,
-                pipeline_status="FETCH_FAILED",
-                total_api_calls=api_calls_for_deal,
-                total_llm_calls=1
-            )
-            return
-
+        # Fetch the PDF
+        logger.info(f"Downloading PDF: {candidate_data['resolved_pdf_url']}")
         fetch_result = await download_recap_pdf(
-            pdf_url=resolved_pdf_url,
+            pdf_url=candidate_data["resolved_pdf_url"],
             deal_id=deal_id
         )
 
@@ -340,7 +227,7 @@ async def process_deal(deal: Dict[str, Any], gatekeeper: LLMGatekeeper, telemetr
             telemetry.log_pipeline_terminal(
                 deal=deal,
                 pipeline_status="FETCH_FAILED",
-                total_api_calls=api_calls_for_deal,
+                total_api_calls=api_calls_consumed,
                 total_llm_calls=1
             )
             return
@@ -350,7 +237,7 @@ async def process_deal(deal: Dict[str, Any], gatekeeper: LLMGatekeeper, telemetr
         telemetry.log_pipeline_terminal(
             deal=deal,
             pipeline_status="DOWNLOADED",
-            total_api_calls=api_calls_for_deal,
+            total_api_calls=api_calls_consumed,
             total_llm_calls=1,
             downloaded_file=fetch_result["local_file_path"]
         )
@@ -360,7 +247,7 @@ async def process_deal(deal: Dict[str, Any], gatekeeper: LLMGatekeeper, telemetr
         telemetry.log_pipeline_terminal(
             deal=deal,
             pipeline_status="NOT_FOUND",  # Treat as not found since we couldn't search
-            total_api_calls=api_calls_for_deal,
+            total_api_calls=api_calls_consumed,
             total_llm_calls=0
         )
         raise
@@ -371,7 +258,7 @@ async def process_deal(deal: Dict[str, Any], gatekeeper: LLMGatekeeper, telemetr
         telemetry.log_pipeline_terminal(
             deal=deal,
             pipeline_status="NOT_FOUND",  # Treat as not found on error
-            total_api_calls=api_calls_for_deal,
+            total_api_calls=api_calls_consumed,
             total_llm_calls=0
         )
 

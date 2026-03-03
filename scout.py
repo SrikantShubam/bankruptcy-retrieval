@@ -17,7 +17,7 @@ import aiolimiter
 # Load environment variables first
 from dotenv import load_dotenv
 import os
-load_dotenv('.env')  # explicit path
+load_dotenv('../.env')  # one level up
 
 # Add the shared directory to the path
 import sys
@@ -83,30 +83,56 @@ async def get_auth_headers() -> dict:
     if not token:
         raise ValueError("COURTLISTENER_API_TOKEN not set in environment")
     return {"Authorization": f"Token {token}"}
+# Keywords to match inside recap_documents[].description
+DOC_KEYWORDS = [
+    "first day declaration",
+    "declaration in support of first day",
+    "declaration in support of chapter 11 petition",
+    "declaration in support of the debtors",
+    "in support of first day motions",
+    "dip motion",
+    "debtor in possession financing motion",
+    "cash collateral motion",
+]
 
+HARD_REJECT = [
+    "motion for relief from stay",
+    "relief from stay",
+    "certificate of service",
+    "notice of filing",
+    "monthly operating report",
+    "fee application",
+    "retention application",
+    "order regarding",
+    "order granting",
+    "order approving",
+    "pro hac vice",
+    "fee statement",
+]
 async def find_document_for_deal(
     company_name: str,
     filing_year: int,
     court: str,
 ) -> Optional[Dict[str, Any]]:
     """
-    Single-phase: search V4 for the first day declaration directly.
-    Returns a candidate dict or None.
+    Search V4 for first day declaration using free-text queries,
+    then filter recap_documents by description keyword.
     """
     SEARCH_URL = "https://www.courtlistener.com/api/rest/v4/search/"
 
-    FIELD_QUERIES = [
-        'short_description:"first day"',
-        'short_description:"declaration in support" short_description:"chapter 11"',
-        'short_description:"DIP financing"',
-        'short_description:"debtor in possession financing"',
-        'short_description:"cash collateral motion"',
+    # Free-text queries — no field targeting, broader match
+    QUERIES = [
+        f'"{company_name}" "first day"',
+        f'"{company_name}" "declaration in support"',
+        f'"{company_name}" "DIP motion"',
+        f'"{company_name}" "debtor in possession"',
+        f'"{company_name}" "cash collateral"',
     ]
 
     calls = 0
-    for field_query in FIELD_QUERIES[:MAX_KEYWORD_QUERIES_PER_DEAL]:
+    for query in QUERIES[:MAX_KEYWORD_QUERIES_PER_DEAL]:
         params = {
-            "q": f'"{company_name}" {field_query}',
+            "q": query,
             "type": "r",
             "available_only": "on",
             "order_by": "score desc",
@@ -114,49 +140,50 @@ async def find_document_for_deal(
             "filed_before": f"{filing_year}-12-31",
         }
 
-        # Add court filter if provided
-        court_slug = get_court_slug(court)
-        if court_slug:
-            params["court"] = court_slug
-
-        print(f"DEBUG: Querying with params: {params}")
-
         try:
             response = await rate_limited_api_call(SEARCH_URL, params)
             calls += 1
             data = response.json()
             results = data.get("results", [])
 
-            print(f"DEBUG: Got {len(results)} results")
-
             for result in results:
-                filepath = result.get("filepath_local", "")
-                print(f"DEBUG: Result filepath: {filepath}, is_available: {result.get('is_available', False)}")
+                case_name = result.get("caseName", "")
+                date_filed = (result.get("dateFiled") or "")[:10]
 
-                if not filepath or not result.get("is_available", False):
-                    continue
+                for doc in result.get("recap_documents", []):
+                    filepath = doc.get("filepath_local", "")
+                    if not filepath or not doc.get("is_available", False):
+                        continue
 
-                title = result.get("short_description", "") or result.get("caseName", "")
-                print(f"DEBUG: Result title: {title}")
+                    # Use full description for matching, short_description as title
+                    description = doc.get("description", "").lower()
+                    title = doc.get("description", "") or doc.get("short_description", "")
 
-                if not title or len(title) < 10:
-                    continue
+                    if not title or len(title) < 10:
+                        continue
 
-                return {
-                    "docket_entry_id": str(result.get("id", "")),
-                    "docket_title": title,
-                    "filing_date": (result.get("dateFiled") or "")[:10],
-                    "attachment_descriptions": [],
-                    "resolved_pdf_url": f"https://storage.courtlistener.com/{filepath}",
-                    "api_calls_consumed": calls,
-                    "source": "courtlistener",
-                }
+                    # Must match at least one positive keyword
+                    has_signal = any(kw in description for kw in DOC_KEYWORDS)
+                    is_noise = any(rj in description for rj in HARD_REJECT)
+
+                    if not has_signal or is_noise:
+                        continue
+
+                    return {
+                        "docket_entry_id": str(doc.get("docket_entry_id", doc.get("id", ""))),
+                        "docket_title": title[:200],
+                        "filing_date": doc.get("entry_date_filed") or date_filed,
+                        "attachment_descriptions": [],
+                        "resolved_pdf_url": f"https://storage.courtlistener.com/{filepath}",
+                        "api_calls_consumed": calls,
+                        "source": "courtlistener",
+                    }
+
         except Exception as e:
-            print(f"DEBUG: Exception occurred: {e}")
+            print(f"Query failed: {query[:50]} — {e}")
             continue
 
     return None
-
 # Retry configuration
 retry_config = {
     "stop": stop_after_attempt(5),
