@@ -178,9 +178,15 @@ async def process_deal(deal: Dict[str, Any], gatekeeper: LLMGatekeeper, telemetr
             api_calls_consumed=api_calls_consumed
         )
 
-        # Gatekeeper evaluation
+        # Gatekeeper evaluation (with one retry on transient failure)
         logger.info(f"Evaluating with Gatekeeper: {deal_id}")
         gatekeeper_result = await gatekeeper.evaluate(candidate)
+        # if the LLM call failed or returned an empty error, try one more time
+        if gatekeeper_result.verdict == "SKIP":
+            err = gatekeeper_result.error or ""
+            if err == "" or err == "network" or err.startswith("HTTP"):
+                logger.warning(f"Gatekeeper returned SKIP with error '{err}' for {deal_id}, retrying once")
+                gatekeeper_result = await gatekeeper.evaluate(candidate)
 
         # Log gatekeeper decision
         telemetry.log_gatekeeper_decision(
