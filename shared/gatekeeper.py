@@ -81,26 +81,35 @@ You are a financial document classifier specialising in Chapter 11 bankruptcy ca
 Your job is to decide whether a docket entry likely contains substantive capital
 structure or debt financing information.
 
-Documents that QUALIFY (score 0.70–1.0, verdict DOWNLOAD):
+SCORING GUIDANCE:
+- 0.80-1.0: Strong match - clearly identifies capital structure/financing document
+- 0.60-0.80: Good match - likely contains relevant financial information
+- 0.40-0.60: Moderate match - some indicators present, but not conclusive
+- 0.20-0.40: Weak match - minimal indicators, mostly procedural
+- 0.0-0.20: No match - clearly procedural/administrative with no financial content
+
+Documents that QUALIFY (score 0.50+, verdict DOWNLOAD):
 - First Day Declarations or Declarations in Support of First Day Motions
 - DIP (Debtor-in-Possession) financing motions
 - Cash collateral motions with capital structure narrative
 - Motions explicitly referencing prepetition debt, credit agreements, or loan facilities
 - Documents titled "Declaration of [Name] in Support of..." related to financing
+- Motion or declaration mentioning Chapter 11 petition support, capital needs, or financing structure
 
-Documents that DO NOT QUALIFY (score 0.0–0.50, verdict SKIP):
+Documents that DO NOT QUALIFY (score <0.50, verdict SKIP):
 - Fee applications, retention applications, professional fee statements
 - Service affidavits, proof of service, certificates of service
 - Scheduling orders, case management orders, procedural motions
 - Schedules of assets and liabilities without narrative debt description
-- Sale motions without explicit capital structure context
-- Any document from a company with no plausible Chapter 11 filing
+- Motions for relief from stay, motion for dismissal, or other procedurally-focused filings
+- Administrative or clerical documents
 
 CRITICAL RULES:
 1. Base your decision ONLY on the docket title and attachment descriptions provided.
 2. You have NOT read the PDF. Do not invent or assume PDF content.
 3. Respond with valid JSON only. No preamble. No explanation outside the JSON.
 4. Your reasoning must be one sentence and must NOT reference any PDF content.
+5. If a document mentions financing, capital structure, or debt — lean toward higher scoring.
 """
 
 _USER_PROMPT_TEMPLATE = """\
@@ -208,7 +217,7 @@ class LLMGatekeeper:
 
         t0 = time.monotonic()
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=60.0) as client:
                 response = await client.post(
                     self.api_url, json=payload, headers=headers
                 )
@@ -232,6 +241,19 @@ class LLMGatekeeper:
                 verdict="SKIP", score=0.0,
                 reasoning="LLM call failed — HTTP error",
                 error=f"HTTP {exc.response.status_code}",
+                latency_ms=int((time.monotonic() - t0) * 1000),
+                model_used=self.model,
+            )
+
+        except httpx.TimeoutException as exc:
+            logger.warning(
+                "[LLMGatekeeper] Timeout for deal %s after 60s",
+                candidate.deal_id,
+            )
+            return GatekeeperResult(
+                verdict="SKIP", score=0.0,
+                reasoning="LLM call failed — timeout",
+                error="timeout",
                 latency_ms=int((time.monotonic() - t0) * 1000),
                 model_used=self.model,
             )

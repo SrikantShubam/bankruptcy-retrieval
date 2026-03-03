@@ -8,6 +8,7 @@ Implements the three-phase search:
 """
 import asyncio
 import json
+import unicodedata
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 import httpx
@@ -83,6 +84,32 @@ async def get_auth_headers() -> dict:
     if not token:
         raise ValueError("COURTLISTENER_API_TOKEN not set in environment")
     return {"Authorization": f"Token {token}"}
+
+def normalize_company_name(name: str) -> str:
+    """
+    Normalize company name for API queries.
+    Handles special characters, smart quotes, em-dashes, etc.
+    """
+    # Normalize Unicode to NFC (composed) form
+    name = unicodedata.normalize('NFC', name)
+    
+    # Replace common problematic characters with ASCII equivalents
+    replacements = {
+        '\u2013': '-',    # en-dash
+        '\u2014': '-',    # em-dash
+        '\u2018': "'",    # left single quote
+        '\u2019': "'",    # right single quote
+        '\u201c': '"',    # left double quote
+        '\u201d': '"',    # right double quote
+        '\u2010': '-',    # hyphen
+        '\u2011': '-',    # non-breaking hyphen
+    }
+    
+    for special, replacement in replacements.items():
+        name = name.replace(special, replacement)
+    
+    return name
+
 # Keywords to match inside recap_documents[].description
 DOC_KEYWORDS = [
     "first day declaration",
@@ -120,13 +147,16 @@ async def find_document_for_deal(
     """
     SEARCH_URL = "https://www.courtlistener.com/api/rest/v4/search/"
 
+    # Normalize company name to handle special characters
+    clean_name = normalize_company_name(company_name)
+
     # Free-text queries — no field targeting, broader match
     QUERIES = [
-        f'"{company_name}" "first day"',
-        f'"{company_name}" "declaration in support"',
-        f'"{company_name}" "DIP motion"',
-        f'"{company_name}" "debtor in possession"',
-        f'"{company_name}" "cash collateral"',
+        f'"{clean_name}" "first day"',
+        f'"{clean_name}" "declaration in support"',
+        f'"{clean_name}" "DIP motion"',
+        f'"{clean_name}" "debtor in possession"',
+        f'"{clean_name}" "cash collateral"',
     ]
 
     calls = 0
