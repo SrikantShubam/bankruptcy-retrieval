@@ -259,16 +259,21 @@ class LLMGatekeeper:
             )
 
         except Exception as exc:
-            logger.warning(
-                "[LLMGatekeeper] Unexpected error for deal %s: %s",
-                candidate.deal_id, exc,
-            )
+            # Log full traceback at WARNING so it is visible even if level is INFO
             import traceback
-            logger.debug(f"[LLMGatekeeper] Full traceback: {traceback.format_exc()}")
+            tb = traceback.format_exc()
+            logger.warning(
+                "[LLMGatekeeper] Unexpected error for deal %s: %s\n%s",
+                candidate.deal_id, exc, tb
+            )
+            # Distinguish network errors for clarity
+            err_str = str(exc) or exc.__class__.__name__
+            if isinstance(exc, httpx.NetworkError):
+                err_str = "network"
             return GatekeeperResult(
                 verdict="SKIP", score=0.0,
                 reasoning="LLM call failed — unexpected error",
-                error=str(exc),
+                error=err_str,
                 latency_ms=int((time.monotonic() - t0) * 1000),
                 model_used=self.model,
             )
