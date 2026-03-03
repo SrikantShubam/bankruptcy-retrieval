@@ -39,14 +39,138 @@ from tools import (
     search_courtlistener_fulltext,
 )
 
-# Field-targeted queries for bankruptcy-related documents
-FIELD_QUERIES = [
-    'short_description:"first day"',
-    'short_description:"declaration in support" short_description:"chapter 11"',
-    'short_description:"DIP financing"',
-    'short_description:"debtor in possession financing"',
-    'short_description:"cash collateral motion"',
+# Free-text phrase queries for bankruptcy-related documents
+QUERY_TEMPLATES = [
+    '"{company}" "first day"',
+    '"{company}" "declaration in support"',
+    '"{company}" "DIP motion"',
+    '"{company}" "debtor in possession"',
+    '"{company}" "cash collateral"',
 ]
+
+DOC_KEYWORDS = [
+    "first day declaration",
+    "declaration in support of first day",
+    "declaration in support of chapter 11 petition",
+    "declaration in support of the debtors",
+    "in support of first day motions",
+    "chapter 11 petitions and first day motions",
+    "chapter 11 petition and first day pleadings",
+    "first day pleadings",
+    "dip motion",
+    "debtor in possession financing motion",
+    "cash collateral motion",
+]
+
+HARD_REJECT = [
+    "motion for relief from stay",
+    "relief from stay",
+    "certificate of service",
+    "notice of filing",
+    "monthly operating report",
+    "fee application",
+    "retention application",
+    "order regarding",
+    "order granting",
+    "order approving",
+    "pro hac vice",
+    "official committee",
+    "unsecured creditors",
+    "objection",
+    "response",
+    "statement in respect of",
+]
+
+
+def _description_signal_score(description_lower: str) -> int:
+    """Heuristic ranking so scout prefers true first-day declarations."""
+    score = 0
+    if "first day declaration" in description_lower:
+        score += 8
+    if "declaration in support of first day" in description_lower:
+        score += 7
+    if "chapter 11 petitions and first day" in description_lower:
+        score += 6
+    if "in support of first day motions" in description_lower:
+        score += 6
+    if "chapter 11 petitions and first day motions" in description_lower:
+        score += 6
+    if "chapter 11 petition and first day pleadings" in description_lower:
+        score += 6
+    if "first day pleadings" in description_lower:
+        score += 4
+    if "declaration in support of chapter 11 petition" in description_lower:
+        score += 5
+    if "declaration in support of the debtors" in description_lower:
+        score += 4
+    if "dip motion" in description_lower:
+        score += 3
+    if "debtor in possession financing motion" in description_lower:
+        score += 3
+    if "cash collateral motion" in description_lower:
+        score += 2
+    return score
+
+
+_COMPANY_STOPWORDS = {
+    "inc", "inc.", "llc", "l.l.c.", "corp", "corporation", "company", "co", "co.",
+    "holdings", "group", "financial", "finance", "systems", "brands", "the", "and",
+}
+
+
+def _company_tokens(company_name: str) -> list[str]:
+    import re
+    tokens = [t for t in re.findall(r"[a-z0-9]+", (company_name or "").lower()) if len(t) >= 3]
+    return [t for t in tokens if t not in _COMPANY_STOPWORDS]
+
+
+def _company_matches_deal(company_name: str, case_name: str, description: str) -> bool:
+    haystack = f"{case_name or ''} {description or ''}".lower()
+    tokens = _company_tokens(company_name)
+    if not tokens:
+        return True
+    # Require at least one meaningful company token in case/title metadata.
+    return any(tok in haystack for tok in tokens)
+
+
+def _court_matches_deal(deal_court: str, result_court: str) -> bool:
+    if not deal_court:
+        return True
+    slug = get_court_slug(deal_court)
+    court_text = (result_court or "").lower()
+    slug_markers = {
+        "njd": ["new jersey"],
+        "nysd": ["s.d. new york", "southern district of new york"],
+        "deb": ["delaware"],
+        "txsd": ["s.d. texas", "southern district of texas"],
+        "flmd": ["m.d. florida", "middle district of florida"],
+    }
+    markers = slug_markers.get(slug)
+    if not markers:
+        return True
+    return any(m in court_text for m in markers)
+
+
+def _fallback_gatekeeper_from_title(title: str) -> dict:
+    """Deterministic backup when LLM gatekeeper is unavailable."""
+    t = (title or "").lower()
+    has_signal = any(kw in t for kw in DOC_KEYWORDS)
+    is_noise = any(rj in t for rj in HARD_REJECT)
+    if has_signal and not is_noise:
+        return {
+            "verdict": "DOWNLOAD",
+            "score": 0.91,
+            "reasoning": "Metadata-only fallback matched first-day financing signals.",
+            "token_count": 0,
+            "model_used": "heuristic_fallback",
+        }
+    return {
+        "verdict": "SKIP",
+        "score": 0.05,
+        "reasoning": "Metadata-only fallback found no reliable first-day signal.",
+        "token_count": 0,
+        "model_used": "heuristic_fallback",
+    }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -97,6 +221,7 @@ async def scout_node(state: PipelineState) -> PipelineState:
     deal_id = deal.get("deal_id", "")
     company_name = deal.get("company_name", "")
     filing_year = deal.get("filing_year", 2023)
+    deal_court = deal.get("court", "")
     claims_agent = deal.get("claims_agent")
 
     headers = {"Authorization": f"Token {COURTLISTENER_API_TOKEN}"} if COURTLISTENER_API_TOKEN else {}
@@ -106,9 +231,9 @@ async def scout_node(state: PipelineState) -> PipelineState:
 
     # ── Phase 1: CourtListener V4 search with field-targeted queries ──
     async with httpx.AsyncClient(timeout=30.0) as client:
-        for field_query in FIELD_QUERIES[:MAX_KEYWORD_QUERIES_PER_DEAL]:
+        for query_template in QUERY_TEMPLATES[:MAX_KEYWORD_QUERIES_PER_DEAL]:
             params = {
-                "q": f'"{company_name}" {field_query}',
+                "q": query_template.format(company=company_name),
                 "type": "r",  # RECAP documents
                 "available_only": "on",
                 "order_by": "score desc",
@@ -128,42 +253,48 @@ async def scout_node(state: PipelineState) -> PipelineState:
                 results = search_data.get("results", [])
 
                 if results:
-                    # Extract candidates from top-level fields (V4 search returns flat results)
+                    # type=r returns docket-level rows with nested recap_documents.
+                    best_candidate = None
+                    best_score = -1
                     for result in results:
-                        if not result.get("is_available", False):
-                            continue
+                        date_filed = (result.get("dateFiled") or "")[:10]
+                        case_name = result.get("caseName", "")
+                        result_court = result.get("court", "")
+                        for doc in result.get("recap_documents", []):
+                            filepath = doc.get("filepath_local", "")
+                            if not filepath or not doc.get("is_available", False):
+                                continue
 
-                        case_name = result.get("caseName", company_name)
-                        date_filed = result.get("dateFiled", "")[:10] if result.get("dateFiled") else ""
+                            description = doc.get("description", "")
+                            if not _company_matches_deal(company_name, case_name, description):
+                                continue
+                            if not _court_matches_deal(deal_court, result_court):
+                                continue
+                            description_lower = description.lower()
+                            has_signal = any(kw in description_lower for kw in DOC_KEYWORDS)
+                            is_noise = any(rj in description_lower for rj in HARD_REJECT)
+                            if not has_signal or is_noise:
+                                continue
+                            score = _description_signal_score(description_lower)
+                            candidate = {
+                                "deal_id": deal_id,
+                                "source": "courtlistener",
+                                "docket_entry_id": str(doc.get("docket_entry_id", doc.get("id", ""))),
+                                "docket_title": description[:200],
+                                "filing_date": doc.get("entry_date_filed") or date_filed,
+                                "attachment_descriptions": [],
+                                "resolved_pdf_url": f"https://storage.courtlistener.com/{filepath}",
+                                "api_calls_consumed": api_calls_made,
+                            }
+                            if score > best_score:
+                                best_score = score
+                                best_candidate = candidate
 
-                        description = result.get("short_description", "")
-                        if not description:
-                            description = case_name
-
-                        filepath = result.get("filepath_local", "")
-                        if filepath:
-                            pdf_url = f"https://storage.courtlistener.com/{filepath}"
-                        else:
-                            continue
-
-                        if not pdf_url:
-                            continue
-
-                        candidate = {
-                            "deal_id": deal_id,
-                            "source": "courtlistener",
-                            "docket_entry_id": str(result.get("id", "")),
-                            "docket_title": description,
-                            "filing_date": date_filed,
-                            "attachment_descriptions": [],
-                            "resolved_pdf_url": pdf_url,
-                            "api_calls_consumed": api_calls_made,
-                        }
-                        candidates.append(candidate)
-                        break  # Found one, stop
+                    if best_candidate:
+                        candidates.append(best_candidate)
 
                     if candidates:
-                        break  # Found candidate, stop field queries
+                        break  # Found candidate, stop phrase queries
     
     # ── Phase 2: Claims agent browser tool fallback ──
     if not candidates and claims_agent:
@@ -246,6 +377,13 @@ async def gatekeeper_node(state: PipelineState) -> PipelineState:
             "docket_title": candidate.get("docket_title", ""),
             "attachment_descriptions": candidate.get("attachment_descriptions", []),
         }
+        llm_failed = (result.error is not None) or (result.reasoning or "").lower().startswith("llm call failed")
+        if llm_failed:
+            gatekeeper_result = {
+                **_fallback_gatekeeper_from_title(candidate.get("docket_title", "")),
+                "docket_title": candidate.get("docket_title", ""),
+                "attachment_descriptions": candidate.get("attachment_descriptions", []),
+            }
         
     except Exception as e:
         logger.warning(f"Gatekeeper error: {e}")

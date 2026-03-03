@@ -78,9 +78,6 @@ async def run_pipeline():
         with open(DEALS_DATASET_PATH) as f:
             deals = json.load(f)
     
-    with open(DEALS_DATASET_PATH) as f:
-        deals = json.load(f)
-    
     logger.info(f"Loaded {len(deals)} deals from dataset")
     
     # Initialize telemetry logger

@@ -442,6 +442,7 @@ class TelemetryLogger:
         print(f"  Runtime           : {report['total_runtime_seconds']:.1f}s")
         excl_ok = report['already_processed_correctly_excluded']
         excl_bad = report['already_processed_incorrectly_processed']
-        status = "✓ PASS" if excl_bad == 0 else f"✗ FAIL ({excl_bad} leaked through)"
+        status = "PASS" if excl_bad == 0 else f"FAIL ({excl_bad} leaked through)"
         print(f"  Exclusion Audit   : {status}  ({excl_ok}/5 correctly skipped)")
         print("=" * 60 + "\n")
+
