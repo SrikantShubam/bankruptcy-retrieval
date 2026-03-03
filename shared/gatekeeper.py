@@ -263,6 +263,8 @@ class LLMGatekeeper:
                 "[LLMGatekeeper] Unexpected error for deal %s: %s",
                 candidate.deal_id, exc,
             )
+            import traceback
+            logger.debug(f"[LLMGatekeeper] Full traceback: {traceback.format_exc()}")
             return GatekeeperResult(
                 verdict="SKIP", score=0.0,
                 reasoning="LLM call failed — unexpected error",
