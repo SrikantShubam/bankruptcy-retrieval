@@ -47,6 +47,10 @@ class TelemetryCollector:
 
     def summarize(self, ground_truth: Dict[str, Dict[str, Any]], total_api_calls: int, total_llm_calls: int) -> Dict[str, Any]:
         tp = fp = fn = tn = infra_failed = already = unclassified = 0
+        tp_ids: List[str] = []
+        fp_ids: List[str] = []
+        fn_ids: List[str] = []
+        tn_ids: List[str] = []
         statuses_by_deal = {str(e["deal_id"]): e["pipeline_status"] for e in self.events}
 
         for deal_id, status in statuses_by_deal.items():
@@ -57,12 +61,16 @@ class TelemetryCollector:
             cls = self._classify(truth, status)
             if cls == "TP":
                 tp += 1
+                tp_ids.append(deal_id)
             elif cls == "FP":
                 fp += 1
+                fp_ids.append(deal_id)
             elif cls == "FN":
                 fn += 1
+                fn_ids.append(deal_id)
             elif cls == "TN":
                 tn += 1
+                tn_ids.append(deal_id)
             elif cls == "ALREADY_PROCESSED":
                 already += 1
             elif cls == "UNCLASSIFIED":
@@ -85,6 +93,10 @@ class TelemetryCollector:
             "FP": fp,
             "FN": fn,
             "TN": tn,
+            "tp_deal_ids": tp_ids,
+            "fp_deal_ids": fp_ids,
+            "fn_deal_ids": fn_ids,
+            "tn_deal_ids": tn_ids,
             "precision": round(precision, 4),
             "recall": round(recall, 4),
             "f1_score": round(f1_score, 4),
@@ -109,6 +121,6 @@ class TelemetryCollector:
         os.makedirs(os.path.dirname(self.log_path), exist_ok=True)
         with open(self.log_path, "w", encoding="utf-8") as f:
             for e in self.events:
-                f.write(json.dumps(e) + "\n")
+                f.write(json.dumps(e, ensure_ascii=False) + "\n")
         with open(self.report_path, "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2)
