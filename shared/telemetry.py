@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 # Pipeline status literals (mirrors shared/config.py PipelineStatus)
 _STATUS = Literal[
     "ALREADY_PROCESSED", "DOWNLOADED", "SKIPPED",
-    "NOT_FOUND", "FETCH_FAILED", "PENDING"
+    "NOT_FOUND", "FETCH_FAILED", "INFRA_FAILED", "PENDING"
 ]
 
 
@@ -325,6 +325,9 @@ class TelemetryLogger:
             # Scout + Gatekeeper approved it, but download failed.
             # Treat as FALSE_NEGATIVE — we tried but couldn't get it.
             return "FALSE_NEGATIVE" if has_data else "TRUE_NEGATIVE"
+        elif pipeline_status == "INFRA_FAILED":
+            # Infra/connectivity issue; do not score as retrieval quality.
+            return "UNCLASSIFIED"
         else:
             return "UNCLASSIFIED"
 
@@ -398,6 +401,10 @@ class TelemetryLogger:
             "total_runtime_seconds":                 total_runtime,
             "already_processed_correctly_excluded":  already - already_incorrectly_processed,
             "already_processed_incorrectly_processed": already_incorrectly_processed,
+            "infra_failed":                          sum(
+                1 for status in self._outcomes.values()
+                if status == "INFRA_FAILED"
+            ),
         }
 
         with open(self.report_path, "w", encoding="utf-8") as f:
@@ -439,10 +446,15 @@ class TelemetryLogger:
               f"{report['false_negatives']} / {report['true_negatives']}")
         print(f"  Decoy Filter Rate : {report['decoy_filter_rate']:.4f}")
         print(f"  API Calls Total   : {report['total_api_calls']}")
+        print(f"  Infra Failed      : {report.get('infra_failed', 0)}")
         print(f"  Runtime           : {report['total_runtime_seconds']:.1f}s")
         excl_ok = report['already_processed_correctly_excluded']
         excl_bad = report['already_processed_incorrectly_processed']
+        excl_expected = sum(
+            1 for truth in self.ground_truth.values()
+            if truth.get("already_processed", False)
+        )
         status = "PASS" if excl_bad == 0 else f"FAIL ({excl_bad} leaked through)"
-        print(f"  Exclusion Audit   : {status}  ({excl_ok}/5 correctly skipped)")
+        print(f"  Exclusion Audit   : {status}  ({excl_ok}/{excl_expected} correctly skipped)")
         print("=" * 60 + "\n")
 

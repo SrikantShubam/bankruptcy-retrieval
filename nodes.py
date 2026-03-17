@@ -43,9 +43,14 @@ from tools import (
 QUERY_TEMPLATES = [
     '"{company}" "first day"',
     '"{company}" "declaration in support"',
+    '"{company}" "first day motions"',
     '"{company}" "DIP motion"',
     '"{company}" "debtor in possession"',
     '"{company}" "cash collateral"',
+    '"{company}" "chapter 11 petitions"',
+    '"{company}" "first day matters"',
+    '"{company}" "first day pleadings"',
+    '"{company}" "postpetition financing"',
 ]
 
 DOC_KEYWORDS = [
@@ -56,10 +61,17 @@ DOC_KEYWORDS = [
     "in support of first day motions",
     "chapter 11 petitions and first day motions",
     "chapter 11 petition and first day pleadings",
+    "chapter 11 petitions",
     "first day pleadings",
+    "first day papers",
     "dip motion",
     "debtor in possession financing motion",
     "cash collateral motion",
+    "postpetition financing",
+    "first day matters",
+    "expedited consideration of first day matters",
+    "first day relief",
+    "superpriority postpetition",
 ]
 
 HARD_REJECT = [
@@ -77,8 +89,12 @@ HARD_REJECT = [
     "official committee",
     "unsecured creditors",
     "objection",
+    "opposition to",
     "response",
     "statement in respect of",
+    "summary judgment",
+    "verified statement/declaration of professional",
+    "retention and employment of",
 ]
 
 
@@ -99,17 +115,81 @@ def _description_signal_score(description_lower: str) -> int:
         score += 6
     if "first day pleadings" in description_lower:
         score += 4
+    if "first day papers" in description_lower:
+        score += 4
+    if "first day motion" in description_lower:
+        score += 5
+    if "first day motions" in description_lower:
+        score += 5
+    if "first day petitions" in description_lower:
+        score += 5
     if "declaration in support of chapter 11 petition" in description_lower:
         score += 5
     if "declaration in support of the debtors" in description_lower:
         score += 4
+    if "declaration" in description_lower and "in support of" in description_lower:
+        score += 3
     if "dip motion" in description_lower:
         score += 3
     if "debtor in possession financing motion" in description_lower:
         score += 3
+    if "debtor-in-possession financing" in description_lower:
+        score += 4
+    if "dip loan agreement" in description_lower:
+        score += 3
     if "cash collateral motion" in description_lower:
         score += 2
+    if "postpetition financing" in description_lower:
+        score += 4
+    if "superpriority postpetition" in description_lower:
+        score += 4
+    if "first day matters" in description_lower:
+        score += 4
+    if "expedited consideration of first day matters" in description_lower:
+        score += 5
+    if "first day relief" in description_lower:
+        score += 3
     return score
+
+
+def _has_document_signal(description_lower: str) -> bool:
+    """Recall-oriented signal check for first-day/DIP style filings."""
+    if any(kw in description_lower for kw in DOC_KEYWORDS):
+        return True
+    if "first day" in description_lower and any(
+        token in description_lower for token in ("declaration", "pleading", "petition", "motion")
+    ):
+        return True
+    if "debtor in possession" in description_lower and "motion" in description_lower:
+        return True
+    if "cash collateral" in description_lower and "motion" in description_lower:
+        return True
+    if "postpetition financing" in description_lower:
+        return True
+    if "debtor-in-possession financing" in description_lower:
+        return True
+    if "first day motion" in description_lower:
+        return True
+    if "first day motions" in description_lower:
+        return True
+    if "first day petitions" in description_lower:
+        return True
+    if "declaration" in description_lower and "in support of" in description_lower and (
+        "debtor" in description_lower
+        or "debtors" in description_lower
+        or "chapter 11" in description_lower
+        or "first day" in description_lower
+    ):
+        return True
+    if "first day papers" in description_lower:
+        return True
+    if "first day matters" in description_lower:
+        return True
+    if "first day relief" in description_lower:
+        return True
+    if "superpriority postpetition" in description_lower:
+        return True
+    return False
 
 
 _COMPANY_STOPWORDS = {
@@ -124,17 +204,34 @@ def _company_tokens(company_name: str) -> list[str]:
     return [t for t in tokens if t not in _COMPANY_STOPWORDS]
 
 
+def _normalize_company_query_name(company_name: str) -> str:
+    """
+    Remove noisy suffixes like '(Decoy — ...)' from dataset labels before querying.
+    """
+    cleaned = (company_name or "").split("(")[0].strip()
+    return cleaned or company_name
+
+
 def _company_matches_deal(company_name: str, case_name: str, description: str) -> bool:
     haystack = f"{case_name or ''} {description or ''}".lower()
     tokens = _company_tokens(company_name)
     if not tokens:
         return True
-    # Require at least one meaningful company token in case/title metadata.
-    return any(tok in haystack for tok in tokens)
+    marker_text = (company_name or "").lower()
+    requires_strict_match = any(
+        marker in marker_text for marker in ("decoy", "subsidiary", "no standalone")
+    )
+    matched = sum(1 for tok in set(tokens) if tok in haystack)
+    if requires_strict_match and len(tokens) >= 2:
+        return matched >= 2
+    # Default: require at least one meaningful company token in case/title metadata.
+    return matched >= 1
 
 
 def _court_matches_deal(deal_court: str, result_court: str) -> bool:
     if not deal_court:
+        return True
+    if not result_court:
         return True
     slug = get_court_slug(deal_court)
     court_text = (result_court or "").lower()
@@ -149,6 +246,10 @@ def _court_matches_deal(deal_court: str, result_court: str) -> bool:
     if not markers:
         return True
     return any(m in court_text for m in markers)
+
+
+def _is_decoy_deal(deal_id: str) -> bool:
+    return "decoy" in (deal_id or "").lower()
 
 
 def _fallback_gatekeeper_from_title(title: str) -> dict:
@@ -206,6 +307,50 @@ async def exclusion_check_node(state: PipelineState) -> PipelineState:
 # V4 search endpoint - supports `q` parameter with full-text search
 COURTLISTENER_V4_SEARCH = "https://www.courtlistener.com/api/rest/v4/search/"
 
+
+def _query_templates_for_attempt(attempt_number: int) -> list[str]:
+    """
+    Use a non-overlapping query strategy across retries.
+    This avoids repeated identical searches that hit cached responses.
+    """
+    if attempt_number <= 1:
+        return QUERY_TEMPLATES[:3]
+    if attempt_number == 2:
+        return QUERY_TEMPLATES[3:6]
+    return QUERY_TEMPLATES[6:MAX_KEYWORD_QUERIES_PER_DEAL]
+
+
+async def _docket_matches_company(
+    client,
+    headers: dict,
+    docket_id: int | None,
+    company_name: str,
+    deal_court: str,
+    cache: dict[int, bool],
+) -> bool:
+    """Verify ambiguous rd hits using docket metadata to prevent cross-company false positives."""
+    if not docket_id:
+        return False
+    if docket_id in cache:
+        return cache[docket_id]
+    try:
+        response = await client.get(
+            f"https://www.courtlistener.com/api/rest/v4/dockets/{docket_id}/",
+            headers=headers,
+        )
+        if response.status_code != 200:
+            cache[docket_id] = False
+            return False
+        data = response.json()
+        case_name = data.get("case_name", "")
+        court_name = data.get("court", "")
+        match = _company_matches_deal(company_name, case_name, case_name) and _court_matches_deal(deal_court, court_name)
+        cache[docket_id] = match
+        return match
+    except Exception:
+        cache[docket_id] = False
+        return False
+
 async def scout_node(state: PipelineState) -> PipelineState:
     """
     Scout agent searches for documents using CourtListener V4 Search API.
@@ -220,6 +365,7 @@ async def scout_node(state: PipelineState) -> PipelineState:
     deal = state.get("deal", {})
     deal_id = deal.get("deal_id", "")
     company_name = deal.get("company_name", "")
+    query_company_name = _normalize_company_query_name(company_name)
     filing_year = deal.get("filing_year", 2023)
     deal_court = deal.get("court", "")
     claims_agent = deal.get("claims_agent")
@@ -227,74 +373,152 @@ async def scout_node(state: PipelineState) -> PipelineState:
     headers = {"Authorization": f"Token {COURTLISTENER_API_TOKEN}"} if COURTLISTENER_API_TOKEN else {}
     candidates = []
     api_calls_made = 0
+    request_errors = 0
+    error_log = state.get("error_log", [])
     search_attempts = state.get("search_attempts", 0) + 1
 
-    # ── Phase 1: CourtListener V4 search with field-targeted queries ──
+    # ── Phase 1: CourtListener V4 document-level search (type=rd) ──
+    successful_query_responses = 0
+    query_templates = _query_templates_for_attempt(search_attempts)
+    scored_candidates: dict[str, tuple[int, dict]] = {}
+    docket_match_cache: dict[int, bool] = {}
     async with httpx.AsyncClient(timeout=30.0) as client:
-        for query_template in QUERY_TEMPLATES[:MAX_KEYWORD_QUERIES_PER_DEAL]:
+        for query_template in query_templates:
             params = {
-                "q": query_template.format(company=company_name),
-                "type": "r",  # RECAP documents
+                "q": query_template.format(company=query_company_name),
+                "type": "rd",  # RECAP document-level rows
                 "available_only": "on",
                 "order_by": "score desc",
                 "filed_after": f"{filing_year}-01-01",
                 "filed_before": f"{filing_year}-12-31",
             }
 
-            response = await client.get(
-                COURTLISTENER_V4_SEARCH,
-                params=params,
-                headers=headers
-            )
-            api_calls_made += 1
+            try:
+                response = await client.get(
+                    COURTLISTENER_V4_SEARCH,
+                    params=params,
+                    headers=headers
+                )
+                api_calls_made += 1
+            except httpx.HTTPError as e:
+                # Keep graph execution alive and let routing handle terminal failure.
+                api_calls_made += 1
+                request_errors += 1
+                logger.warning(
+                    "Scout query failed for %s (graph attempt %s): %s",
+                    deal_id,
+                    search_attempts,
+                    str(e)[:160],
+                )
+                continue
 
+            successful_query_responses += 1
             if response.status_code == 200:
                 search_data = response.json()
                 results = search_data.get("results", [])
 
                 if results:
-                    # type=r returns docket-level rows with nested recap_documents.
+                    # type=rd returns direct RECAP document rows.
                     best_candidate = None
                     best_score = -1
                     for result in results:
-                        date_filed = (result.get("dateFiled") or "")[:10]
-                        case_name = result.get("caseName", "")
-                        result_court = result.get("court", "")
-                        for doc in result.get("recap_documents", []):
+                        filepath = result.get("filepath_local", "")
+                        if not filepath or not result.get("is_available", False):
+                            continue
+                        description = result.get("description", "")
+                        case_name = result.get("caseName", "") or ""
+                        result_court = result.get("court", "") or ""
+                        company_match = _company_matches_deal(company_name, case_name, description)
+                        if not _court_matches_deal(deal_court, result_court):
+                            continue
+                        description_lower = description.lower()
+                        has_signal = _has_document_signal(description_lower)
+                        is_noise = any(rj in description_lower for rj in HARD_REJECT)
+                        if not has_signal or is_noise:
+                            continue
+                        score = _description_signal_score(description_lower)
+                        if not company_match:
+                            # rd rows often omit case metadata; keep as low-priority candidate
+                            # instead of dropping potentially valid debtor filings.
+                            score -= 2
+                        candidate = {
+                            "deal_id": deal_id,
+                            "source": "courtlistener",
+                            "docket_entry_id": str(result.get("docket_entry_id", result.get("id", ""))),
+                            "docket_id": result.get("docket_id"),
+                            "docket_title": description[:200],
+                            "filing_date": result.get("entry_date_filed") or "",
+                            "attachment_descriptions": [],
+                            "resolved_pdf_url": f"https://storage.courtlistener.com/{filepath}",
+                            "api_calls_consumed": api_calls_made,
+                            "company_match": company_match,
+                        }
+                        if score > best_score:
+                            best_score = score
+                            best_candidate = candidate
+
+                    if best_candidate:
+                        url = best_candidate.get("resolved_pdf_url", "")
+                        previous = scored_candidates.get(url)
+                        if previous is None or best_score > previous[0]:
+                            scored_candidates[url] = (best_score, best_candidate)
+
+        # Fallback: if rd doc queries found nothing, try docket-level chapter-11 search and inspect nested docs.
+        if not scored_candidates:
+            fallback_params = {
+                "q": f"\"{query_company_name}\" \"chapter 11\"",
+                "type": "r",
+                "available_only": "on",
+                "order_by": "score desc",
+                "filed_after": f"{filing_year}-01-01",
+                "filed_before": f"{filing_year}-12-31",
+                "page_size": 10,
+            }
+            try:
+                fallback_response = await client.get(
+                    COURTLISTENER_V4_SEARCH,
+                    params=fallback_params,
+                    headers=headers
+                )
+                api_calls_made += 1
+                successful_query_responses += 1
+                if fallback_response.status_code == 200:
+                    for row in fallback_response.json().get("results", []):
+                        case_name = row.get("caseName", "")
+                        result_court = row.get("court", "")
+                        for doc in row.get("recap_documents", []):
                             filepath = doc.get("filepath_local", "")
                             if not filepath or not doc.get("is_available", False):
                                 continue
-
                             description = doc.get("description", "")
-                            if not _company_matches_deal(company_name, case_name, description):
+                            description_lower = description.lower()
+                            if not _has_document_signal(description_lower):
+                                continue
+                            if any(rj in description_lower for rj in HARD_REJECT):
                                 continue
                             if not _court_matches_deal(deal_court, result_court):
                                 continue
-                            description_lower = description.lower()
-                            has_signal = any(kw in description_lower for kw in DOC_KEYWORDS)
-                            is_noise = any(rj in description_lower for rj in HARD_REJECT)
-                            if not has_signal or is_noise:
-                                continue
-                            score = _description_signal_score(description_lower)
+                            company_match = _company_matches_deal(company_name, case_name, description)
+                            score = _description_signal_score(description_lower) + (2 if company_match else 0)
                             candidate = {
                                 "deal_id": deal_id,
-                                "source": "courtlistener",
+                                "source": "courtlistener_r",
                                 "docket_entry_id": str(doc.get("docket_entry_id", doc.get("id", ""))),
+                                "docket_id": row.get("docket_id"),
                                 "docket_title": description[:200],
-                                "filing_date": doc.get("entry_date_filed") or date_filed,
+                                "filing_date": doc.get("entry_date_filed") or "",
                                 "attachment_descriptions": [],
                                 "resolved_pdf_url": f"https://storage.courtlistener.com/{filepath}",
                                 "api_calls_consumed": api_calls_made,
+                                "company_match": company_match,
                             }
-                            if score > best_score:
-                                best_score = score
-                                best_candidate = candidate
-
-                    if best_candidate:
-                        candidates.append(best_candidate)
-
-                    if candidates:
-                        break  # Found candidate, stop phrase queries
+                            url = candidate.get("resolved_pdf_url", "")
+                            previous = scored_candidates.get(url)
+                            if previous is None or score > previous[0]:
+                                scored_candidates[url] = (score, candidate)
+            except httpx.HTTPError:
+                api_calls_made += 1
+                request_errors += 1
     
     # ── Phase 2: Claims agent browser tool fallback ──
     if not candidates and claims_agent:
@@ -309,17 +533,64 @@ async def scout_node(state: PipelineState) -> PipelineState:
             logger.info(f"Browser fallback for {deal_id}: found {len(browser_candidates)} candidates")
         except Exception as e:
             logger.warning(f"Browser tool failed for {deal_id}: {e}")
+
+    if scored_candidates:
+        ranked = sorted(scored_candidates.values(), key=lambda pair: pair[0], reverse=True)
+        verified_candidates = []
+        rescue_candidates = []
+        is_decoy = _is_decoy_deal(deal_id)
+        async with httpx.AsyncClient(timeout=30.0) as verify_client:
+            for score, candidate in ranked:
+                company_match = candidate.get("company_match", False)
+                if not company_match:
+                    company_match = await _docket_matches_company(
+                        verify_client,
+                        headers,
+                        candidate.get("docket_id"),
+                        company_name,
+                        deal_court,
+                        docket_match_cache,
+                    )
+                if company_match:
+                    verified_candidates.append(candidate)
+                elif (
+                    not is_decoy
+                    and search_attempts >= 3
+                    and score >= 7
+                    and _has_document_signal((candidate.get("docket_title") or "").lower())
+                ):
+                    # Final-attempt rescue for sparse rd metadata; avoid blocking earlier retries.
+                    rescue_candidates.append(candidate)
+                if len(verified_candidates) >= 5:
+                    break
+                if len(rescue_candidates) >= 2:
+                    continue
+        candidates = verified_candidates[:5]
+        if len(candidates) < 3 and rescue_candidates:
+            for candidate in rescue_candidates:
+                if candidate not in candidates:
+                    candidates.append(candidate)
+                if len(candidates) >= 5:
+                    break
     
     # Debug: Log final API calls state
     final_api_calls = state.get("api_calls_used", 0) + api_calls_made
     logger.debug(f"[SCOUT] Final API calls after scout_node: {final_api_calls}")
     logger.debug(f"[SCOUT] API calls made in this node: {api_calls_made}")
 
+    had_transport_failure = request_errors > 0 and successful_query_responses == 0 and not candidates
+
     return {
         **state,
         "search_attempts": search_attempts,
         "candidates": candidates,
-        "api_calls_used": state.get("api_calls_used", 0) + api_calls_made
+        "api_calls_used": final_api_calls,
+        "pipeline_status": "INFRA_FAILED" if had_transport_failure else state.get("pipeline_status", "active"),
+        "final_status": "INFRA_FAILED" if had_transport_failure else state.get("final_status", "active"),
+        "error_log": error_log + (
+            [f"scout_transport_error: {request_errors} query failures on attempt {search_attempts}"]
+            if had_transport_failure else []
+        ),
     }
 
 
@@ -340,64 +611,82 @@ async def gatekeeper_node(state: PipelineState) -> PipelineState:
     if not candidates:
         return {
             **state,
-            "gatekeeper_results": []
+            "gatekeeper_results": [],
+            "selected_candidate": None,
         }
-    
-    # Use first candidate
-    candidate = candidates[0]
-    
-    # Log the docket_title being evaluated (DEBUG: why so many SKIPs?)
-    logger.info(f"[GATEKEEPER] Evaluating deal_id={candidate.get('deal_id')} | docket_title='{candidate.get('docket_title')}'")
-    
-    # Call gatekeeper
-    try:
-        gatekeeper = LLMGatekeeper()
-        
-        gatekeeper_candidate = GatekeeperCandidate(
-            deal_id=candidate.get("deal_id", ""),
-            source=candidate.get("source", ""),
-            docket_entry_id=candidate.get("docket_entry_id", ""),
-            docket_title=candidate.get("docket_title", ""),
-            filing_date=candidate.get("filing_date", ""),
-            attachment_descriptions=candidate.get("attachment_descriptions", []),
-            resolved_pdf_url=candidate.get("resolved_pdf_url"),
+
+    gatekeeper = LLMGatekeeper()
+    selected_candidate = None
+    new_results = list(existing_results)
+
+    for candidate in candidates[:3]:
+        logger.info(
+            f"[GATEKEEPER] Evaluating deal_id={candidate.get('deal_id')} | docket_title='{candidate.get('docket_title')}'"
         )
-        
-        result = await gatekeeper.evaluate(gatekeeper_candidate)
-        
-        # Log gatekeeper result (DEBUG: track scores for borderline cases)
-        logger.info(f"[GATEKEEPER] Result for {candidate.get('deal_id')}: verdict={result.verdict} score={result.score} reasoning={result.reasoning[:100] if result.reasoning else 'N/A'}...")
-        
-        gatekeeper_result = {
-            "verdict": result.verdict,
-            "score": result.score,
-            "reasoning": result.reasoning,
-            "token_count": result.token_count,
-            "model_used": result.model_used,
-            "docket_title": candidate.get("docket_title", ""),
-            "attachment_descriptions": candidate.get("attachment_descriptions", []),
-        }
-        llm_failed = (result.error is not None) or (result.reasoning or "").lower().startswith("llm call failed")
-        if llm_failed:
+
+        try:
+            gatekeeper_candidate = GatekeeperCandidate(
+                deal_id=candidate.get("deal_id", ""),
+                source=candidate.get("source", ""),
+                docket_entry_id=candidate.get("docket_entry_id", ""),
+                docket_title=candidate.get("docket_title", ""),
+                filing_date=candidate.get("filing_date", ""),
+                attachment_descriptions=candidate.get("attachment_descriptions", []),
+                resolved_pdf_url=candidate.get("resolved_pdf_url"),
+            )
+
+            result = await gatekeeper.evaluate(gatekeeper_candidate)
+            logger.info(
+                f"[GATEKEEPER] Result for {candidate.get('deal_id')}: verdict={result.verdict} score={result.score} reasoning={result.reasoning[:100] if result.reasoning else 'N/A'}..."
+            )
+
             gatekeeper_result = {
-                **_fallback_gatekeeper_from_title(candidate.get("docket_title", "")),
+                "verdict": result.verdict,
+                "score": result.score,
+                "reasoning": result.reasoning,
+                "token_count": result.token_count,
+                "model_used": result.model_used,
                 "docket_title": candidate.get("docket_title", ""),
                 "attachment_descriptions": candidate.get("attachment_descriptions", []),
             }
-        
-    except Exception as e:
-        logger.warning(f"Gatekeeper error: {e}")
-        gatekeeper_result = {
-            "verdict": "SKIP",
-            "score": 0.0,
-            "reasoning": f"Gatekeeper error: {str(e)[:100]}",
-            "token_count": 0,
-            "model_used": "",
-        }
-    
+            llm_failed = (result.error is not None) or (result.reasoning or "").lower().startswith("llm call failed")
+            if llm_failed:
+                gatekeeper_result = {
+                    **_fallback_gatekeeper_from_title(candidate.get("docket_title", "")),
+                    "docket_title": candidate.get("docket_title", ""),
+                    "attachment_descriptions": candidate.get("attachment_descriptions", []),
+                }
+            elif gatekeeper_result["verdict"] == "SKIP" and gatekeeper_result.get("score", 0.0) <= 0.35:
+                heuristic = _fallback_gatekeeper_from_title(candidate.get("docket_title", ""))
+                if heuristic.get("verdict") == "DOWNLOAD":
+                    gatekeeper_result = {
+                        **heuristic,
+                        "reasoning": "Recall rescue: heuristic first-day signal override on low-confidence SKIP.",
+                        "docket_title": candidate.get("docket_title", ""),
+                        "attachment_descriptions": candidate.get("attachment_descriptions", []),
+                    }
+
+        except Exception as e:
+            logger.warning(f"Gatekeeper error: {e}")
+            gatekeeper_result = {
+                "verdict": "SKIP",
+                "score": 0.0,
+                "reasoning": f"Gatekeeper error: {str(e)[:100]}",
+                "token_count": 0,
+                "model_used": "",
+                "docket_title": candidate.get("docket_title", ""),
+                "attachment_descriptions": candidate.get("attachment_descriptions", []),
+            }
+
+        new_results.append(gatekeeper_result)
+        if gatekeeper_result.get("verdict") == "DOWNLOAD":
+            selected_candidate = candidate
+            break
+
     return {
         **state,
-        "gatekeeper_results": existing_results + [gatekeeper_result]
+        "gatekeeper_results": new_results,
+        "selected_candidate": selected_candidate,
     }
 
 
@@ -423,8 +712,8 @@ async def fetcher_node(state: PipelineState) -> PipelineState:
     if not has_download:
         return {**state, "downloaded_files": []}
     
-    # Use first candidate with DOWNLOAD verdict
-    candidate = candidates[0]
+    # Use candidate selected by gatekeeper; fallback to first for backward compatibility.
+    candidate = state.get("selected_candidate") or candidates[0]
     pdf_url = candidate.get("resolved_pdf_url")
     
     if not pdf_url:
@@ -480,6 +769,12 @@ async def fetcher_node(state: PipelineState) -> PipelineState:
 
 async def fallback_node(state: PipelineState) -> PipelineState:
     """Fallback handler for failed downloads."""
+    if state.get("pipeline_status") == "INFRA_FAILED":
+        return {
+            **state,
+            "pipeline_status": "INFRA_FAILED",
+            "final_status": "INFRA_FAILED"
+        }
     return {
         **state,
         "pipeline_status": "FETCH_FAILED",

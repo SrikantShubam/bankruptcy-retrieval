@@ -17,13 +17,14 @@ import json
 import logging
 import sys
 from pathlib import Path
+import httpx
 
 # Add current directory to path for shared imports (same directory structure)
 sys.path.insert(0, str(Path(__file__).parent))
 
 from graph import build_graph, PipelineState
 from shared.telemetry import TelemetryLogger
-from shared.config import is_excluded
+from shared.config import is_excluded, COURTLISTENER_API_TOKEN
 
 # Standard test deals for quick validation
 STANDARD_TEST_DEALS = [
@@ -48,6 +49,25 @@ DATA_DIR = Path(__file__).parent / "data"
 DEALS_DATASET_PATH = DATA_DIR / "deals_dataset.json"
 GROUND_TRUTH_PATH = DATA_DIR / "ground_truth.json"
 LOG_DIR = Path(__file__).parent / "logs"
+
+
+async def courtlistener_connectivity_preflight() -> tuple[bool, str]:
+    """
+    Quick connectivity probe so network outages don't get mixed with retrieval quality.
+    """
+    headers = {"Authorization": f"Token {COURTLISTENER_API_TOKEN}"} if COURTLISTENER_API_TOKEN else {}
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                "https://www.courtlistener.com/api/rest/v4/search/",
+                params={"q": "test", "type": "rd", "page_size": 1},
+                headers=headers,
+            )
+        if response.status_code == 200:
+            return True, "ok"
+        return False, f"http_{response.status_code}"
+    except Exception as e:
+        return False, str(e)[:160]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -91,6 +111,13 @@ async def run_pipeline():
     # Build the LangGraph
     graph = build_graph()
     logger.info("LangGraph compiled successfully")
+
+    connectivity_ok, connectivity_detail = await courtlistener_connectivity_preflight()
+    if not connectivity_ok:
+        logger.warning(
+            "CourtListener preflight failed (%s). Active deals will be marked INFRA_FAILED.",
+            connectivity_detail,
+        )
     
     # Process each deal
     processed = 0
@@ -116,6 +143,21 @@ async def run_pipeline():
             )
             skipped += 1
             continue
+
+        if not connectivity_ok:
+            telemetry.log_event(
+                "INFRA_PRECHECK_FAILED",
+                deal,
+                reason=connectivity_detail,
+            )
+            telemetry.log_pipeline_terminal(
+                deal=deal,
+                pipeline_status="INFRA_FAILED",
+                total_api_calls=0,
+                total_llm_calls=0,
+            )
+            processed += 1
+            continue
         
         # Initialize pipeline state
         initial_state: PipelineState = {
@@ -123,6 +165,7 @@ async def run_pipeline():
             "search_attempts": 0,
             "candidates": [],
             "gatekeeper_results": [],
+            "selected_candidate": None,
             "downloaded_files": [],
             "pipeline_status": "pending",
             "api_calls_used": 0,

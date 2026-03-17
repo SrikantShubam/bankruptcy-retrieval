@@ -46,6 +46,10 @@ def route_after_scout(state: PipelineState) -> str:
     """Route after Scout node execution."""
     candidates = state.get("candidates", [])
     search_attempts = state.get("search_attempts", 0)
+    pipeline_status = state.get("pipeline_status", "")
+
+    if pipeline_status in ("FETCH_FAILED", "INFRA_FAILED"):
+        return "failed"
     
     if candidates:
         return "found"
@@ -120,7 +124,8 @@ def build_graph() -> StateGraph:
         {
             "found": "gatekeeper",
             "retry": "scout",
-            "exhausted": "log"
+            "exhausted": "log",
+            "failed": "fallback",
         }
     )
 

@@ -25,6 +25,7 @@ class PipelineState(TypedDict):
     search_attempts: int                 # Counter: max 3 before NOT_FOUND
     candidates: list[dict]               # CandidateDocument list from Scout
     gatekeeper_results: list[dict]       # Gatekeeper verdict objects
+    selected_candidate: dict | None      # Candidate approved for download
     downloaded_files: list[str]          # Local file paths of successful downloads
     pipeline_status: str                 # Current status string
     api_calls_used: int                  # Running total across all agents
