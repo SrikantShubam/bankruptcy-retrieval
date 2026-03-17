@@ -98,7 +98,7 @@ async def scout_kroll(page: Page, company_name: str, filing_year: int) -> List[D
             url = f"https://restructuring.ra.kroll.com/{slug}/Home-Index?tab=docket"
             print(f"Navigating to Kroll case URL: {url}")
             
-        await page.goto(url, wait_until="networkidle", timeout=45000)
+        await page.goto(url, wait_until="domcontentloaded", timeout=45000)
         final_url = page.url
         
         # Screenshot immediately — before ANY other logic
@@ -135,28 +135,46 @@ async def scout_kroll(page: Page, company_name: str, filing_year: int) -> List[D
                 return []
 
             
-        search_box = await page.query_selector(
-            "input[placeholder*=\"'motion'\"], input[placeholder*=\"'123'\"]"
-        )
+        # Re-use the config keywords
+        keywords_to_try = KROLL_SEARCH_KEYWORDS if (await page.locator("input[name='DockSearchValue']").count() > 0 or await page.locator("input[placeholder*=\"'motion'\"]").count() > 0) else [""]
         
-        keywords_to_try = KROLL_SEARCH_KEYWORDS if search_box else [""]
-        
-        for search_term in keywords_to_try:
-            if search_box and search_term:
-                await search_box.click()
-                await search_box.fill("")
-                await asyncio.sleep(random.uniform(0.3, 0.7))
-                
-                for char in search_term:
-                    await page.keyboard.type(char)
-                    await asyncio.sleep(random.uniform(0.08, 0.15))
-                
-                await page.keyboard.press("Enter")
-                await page.wait_for_load_state("networkidle")
-                await asyncio.sleep(random.uniform(1.0, 2.0))
-                
-                await page.screenshot(path=f"debug_kroll_{deal_id}_searched_{search_term.replace(' ', '_')}.png")
+        # Ensure Docket search tab is active if on a merged search page
+        try:
+            docket_tabs = await page.locator("a.qsearch__tab, a.search__tab, li.qsearch__tab").all()
+            for t in docket_tabs:
+                text = await t.inner_text()
+                if text and "docket" in text.lower():
+                    await t.evaluate("node => node.click()")
+                    await asyncio.sleep(1)
+                    break
+        except Exception as e:
+            print(f"Error clicking docket search tab: {e}")
             
+        for search_term in keywords_to_try:
+            if search_term:
+                # Find the visible input using DOM offsetWidth to bypass Playwright's strict visibility covering bugs
+                found_visible = False
+                loc_elements = await page.locator("input[name='DockSearchValue'], input[placeholder*=\"'motion'\"]").all()
+                for el in loc_elements:
+                    is_vis = await el.evaluate("node => node.offsetWidth > 0 && node.offsetHeight > 0")
+                    if is_vis:
+                        try:
+                            await el.fill(search_term, force=True)
+                            await asyncio.sleep(0.5)
+                            await el.press("Enter")
+                            found_visible = True
+                            break
+                        except Exception as e:
+                            print(f"Error filling visible search box: {e}")
+                
+                if found_visible:
+                    await page.wait_for_load_state("domcontentloaded")
+                    await asyncio.sleep(random.uniform(1.0, 2.0))
+                else:
+                    print(f"Failed to find visible search box for {search_term}")
+                    continue
+                
+                
             rows = await page.query_selector_all("table tbody tr")
             keyword_candidates = []
             
@@ -187,7 +205,15 @@ async def scout_kroll(page: Page, company_name: str, filing_year: int) -> List[D
                     "order approving",
                 ]
 
-                has_signal = any(s in text_lower for s in POSITIVE_SIGNALS)
+                has_signal = (
+                    ("first day" in text_lower and "declaration" in text_lower) or
+                    ("first day" in text_lower and "motion" in text_lower) or
+                    ("chapter 11" in text_lower and "declaration" in text_lower) or
+                    ("dip " in text_lower and "motion" in text_lower) or
+                    ("debtor in possession" in text_lower and "financing" in text_lower) or
+                    ("cash collateral" in text_lower and "motion" in text_lower) or 
+                    any(s in text_lower for s in POSITIVE_SIGNALS)
+                )
                 is_noise = any(r in text_lower for r in HARD_REJECT)
 
                 if not has_signal or is_noise:
