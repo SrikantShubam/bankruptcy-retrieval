@@ -1,0 +1,327 @@
+[
+  {
+    "deal_id": "express-2024",
+    "company_name": "Express, Inc.",
+    "filing_year": 2024,
+    "court": "D. Del.",
+    "chapter": 11,
+    "already_processed": false,
+    "claims_agent": null,
+    "target_doc_types": [
+      "First Day Declaration",
+      "DIP Motion"
+    ],
+    "best_source_doc_type": "First Day Declaration",
+    "acceptable_supporting_docs": [
+      "DIP Motion",
+      "Cash Collateral Motion"
+    ],
+    "hardness_reason": "Retail first-day docket typically includes multiple near-match PDFs; the declaration is usually a better source than operational motions.",
+    "required_doc_types": [
+      "first_day_declaration",
+      "dip_motion"
+    ],
+    "optional_supporting_doc_types": [
+      "cash_collateral_motion",
+      "interim_dip_order",
+      "sale_motion"
+    ],
+    "bundle_cap": 4
+  },
+  {
+    "deal_id": "rue21-2024",
+    "company_name": "rue21, Inc.",
+    "filing_year": 2024,
+    "court": "D. Del.",
+    "chapter": 11,
+    "already_processed": false,
+    "claims_agent": null,
+    "target_doc_types": [
+      "First Day Declaration",
+      "DIP Motion"
+    ],
+    "best_source_doc_type": "First Day Declaration",
+    "acceptable_supporting_docs": [
+      "DIP Motion",
+      "Store Closing Motion"
+    ],
+    "hardness_reason": "Liquidation-style filings often surface sale and store-closing papers above the actual declaration in search results.",
+    "required_doc_types": [
+      "first_day_declaration",
+      "dip_motion"
+    ],
+    "optional_supporting_doc_types": [
+      "cash_collateral_motion",
+      "interim_dip_order",
+      "sale_motion"
+    ],
+    "bundle_cap": 4
+  },
+  {
+    "deal_id": "steward-health-2024",
+    "company_name": "Steward Health Care System LLC",
+    "filing_year": 2024,
+    "court": "S.D. Tex.",
+    "chapter": 11,
+    "already_processed": false,
+    "claims_agent": "Kroll",
+    "target_doc_types": [
+      "First Day Declaration",
+      "DIP Motion"
+    ],
+    "best_source_doc_type": "DIP Motion",
+    "acceptable_supporting_docs": [
+      "First Day Declaration",
+      "Interim DIP Order"
+    ],
+    "hardness_reason": "The financing signal is often concentrated in DIP papers rather than the broad first-day narrative.",
+    "required_doc_types": [
+      "first_day_declaration",
+      "dip_motion"
+    ],
+    "optional_supporting_doc_types": [
+      "cash_collateral_motion",
+      "interim_dip_order",
+      "sale_motion"
+    ],
+    "bundle_cap": 4
+  },
+  {
+    "deal_id": "fisker-2024",
+    "company_name": "Fisker, Inc.",
+    "filing_year": 2024,
+    "court": "D. Del.",
+    "chapter": 11,
+    "already_processed": false,
+    "claims_agent": null,
+    "target_doc_types": [
+      "First Day Declaration",
+      "DIP Motion"
+    ],
+    "best_source_doc_type": "First Day Declaration",
+    "acceptable_supporting_docs": [
+      "DIP Motion",
+      "Cash Management Motion"
+    ],
+    "hardness_reason": "Automotive cases tend to have many high-signal motions and exhibits; picking the declaration over procedural financing papers is non-trivial.",
+    "required_doc_types": [
+      "first_day_declaration",
+      "dip_motion"
+    ],
+    "optional_supporting_doc_types": [
+      "cash_collateral_motion",
+      "interim_dip_order",
+      "sale_motion"
+    ],
+    "bundle_cap": 4
+  },
+  {
+    "deal_id": "tgi-fridays-2024",
+    "company_name": "TGI Fridays, Inc.",
+    "filing_year": 2024,
+    "court": "N.D. Tex.",
+    "chapter": 11,
+    "already_processed": false,
+    "claims_agent": null,
+    "search_aliases": [
+      "TGI Friday's"
+    ],
+    "target_doc_types": [
+      "First Day Declaration",
+      "DIP Motion"
+    ],
+    "best_source_doc_type": "First Day Declaration",
+    "acceptable_supporting_docs": [
+      "DIP Motion",
+      "Cash Collateral Motion"
+    ],
+    "hardness_reason": "Restaurant restructurings commonly scatter business background and capital-stack detail across several first-day pleadings.",
+    "required_doc_types": [
+      "first_day_declaration",
+      "dip_motion"
+    ],
+    "optional_supporting_doc_types": [
+      "cash_collateral_motion",
+      "interim_dip_order",
+      "sale_motion"
+    ],
+    "bundle_cap": 4
+  },
+  {
+    "deal_id": "hornblower-2024",
+    "company_name": "Hornblower Group, Inc.",
+    "filing_year": 2024,
+    "court": "S.D. Tex.",
+    "chapter": 11,
+    "already_processed": false,
+    "claims_agent": null,
+    "target_doc_types": [
+      "First Day Declaration",
+      "DIP Motion"
+    ],
+    "best_source_doc_type": "DIP Motion",
+    "acceptable_supporting_docs": [
+      "First Day Declaration",
+      "Interim DIP Order"
+    ],
+    "hardness_reason": "Travel and services debt structures are frequently clearest in the DIP package rather than the first narrative declaration.",
+    "required_doc_types": [
+      "first_day_declaration",
+      "dip_motion"
+    ],
+    "optional_supporting_doc_types": [
+      "cash_collateral_motion",
+      "interim_dip_order",
+      "sale_motion"
+    ],
+    "bundle_cap": 4
+  },
+  {
+    "deal_id": "conns-2024",
+    "company_name": "Conn's, Inc.",
+    "filing_year": 2024,
+    "court": "S.D. Tex.",
+    "chapter": 11,
+    "already_processed": false,
+    "claims_agent": null,
+    "target_doc_types": [
+      "First Day Declaration",
+      "DIP Motion"
+    ],
+    "best_source_doc_type": "DIP Motion",
+    "acceptable_supporting_docs": [
+      "First Day Declaration",
+      "Cash Collateral Motion"
+    ],
+    "hardness_reason": "Retail-plus-finance structures often make the financing motion the highest-value source for engine-relevant debt data.",
+    "required_doc_types": [
+      "first_day_declaration",
+      "dip_motion"
+    ],
+    "optional_supporting_doc_types": [
+      "cash_collateral_motion",
+      "interim_dip_order",
+      "sale_motion"
+    ],
+    "bundle_cap": 4
+  },
+  {
+    "deal_id": "ll-flooring-2024",
+    "company_name": "LL Flooring, Inc.",
+    "filing_year": 2024,
+    "court": "D. Del.",
+    "chapter": 11,
+    "already_processed": false,
+    "claims_agent": null,
+    "target_doc_types": [
+      "First Day Declaration",
+      "DIP Motion"
+    ],
+    "best_source_doc_type": "First Day Declaration",
+    "acceptable_supporting_docs": [
+      "DIP Motion",
+      "Sale Motion"
+    ],
+    "hardness_reason": "The first-day declaration usually has the best business-context signal, but sale and financing papers often outrank it in noisy dockets.",
+    "required_doc_types": [
+      "first_day_declaration",
+      "dip_motion"
+    ],
+    "optional_supporting_doc_types": [
+      "cash_collateral_motion",
+      "interim_dip_order",
+      "sale_motion"
+    ],
+    "bundle_cap": 4
+  },
+  {
+    "deal_id": "buca-di-beppo-2024",
+    "company_name": "Buca C, LLC",
+    "filing_year": 2024,
+    "court": "N.D. Tex.",
+    "chapter": 11,
+    "already_processed": false,
+    "claims_agent": null,
+    "search_aliases": [
+      "Buca di Beppo"
+    ],
+    "target_doc_types": [
+      "First Day Declaration",
+      "DIP Motion"
+    ],
+    "best_source_doc_type": "First Day Declaration",
+    "acceptable_supporting_docs": [
+      "DIP Motion",
+      "Cash Management Motion"
+    ],
+    "hardness_reason": "Smaller restaurant cases can bury the exact declaration under routine first-day operational motions.",
+    "required_doc_types": [
+      "first_day_declaration",
+      "dip_motion"
+    ],
+    "optional_supporting_doc_types": [
+      "cash_collateral_motion",
+      "interim_dip_order",
+      "sale_motion"
+    ],
+    "bundle_cap": 4
+  },
+  {
+    "deal_id": "exactech-2024",
+    "company_name": "Exactech, Inc.",
+    "filing_year": 2024,
+    "court": "D. Del.",
+    "chapter": 11,
+    "already_processed": false,
+    "claims_agent": null,
+    "target_doc_types": [
+      "First Day Declaration",
+      "DIP Motion"
+    ],
+    "best_source_doc_type": "DIP Motion",
+    "acceptable_supporting_docs": [
+      "First Day Declaration",
+      "Interim DIP Order"
+    ],
+    "hardness_reason": "Medical-device cases often require selecting financing-specific papers over broader case-background filings.",
+    "required_doc_types": [
+      "first_day_declaration",
+      "dip_motion"
+    ],
+    "optional_supporting_doc_types": [
+      "cash_collateral_motion",
+      "interim_dip_order",
+      "sale_motion"
+    ],
+    "bundle_cap": 4
+  },
+  {
+    "deal_id": "caremax-2024",
+    "company_name": "CareMax, Inc.",
+    "filing_year": 2024,
+    "court": "N.D. Tex.",
+    "chapter": 11,
+    "already_processed": false,
+    "claims_agent": null,
+    "target_doc_types": [
+      "First Day Declaration",
+      "DIP Motion"
+    ],
+    "best_source_doc_type": "First Day Declaration",
+    "acceptable_supporting_docs": [
+      "DIP Motion",
+      "Cash Collateral Motion"
+    ],
+    "hardness_reason": "Healthcare cases frequently split narrative distress detail and financing detail across separate PDFs, making source ranking harder.",
+    "required_doc_types": [
+      "first_day_declaration",
+      "dip_motion"
+    ],
+    "optional_supporting_doc_types": [
+      "cash_collateral_motion",
+      "interim_dip_order",
+      "sale_motion"
+    ],
+    "bundle_cap": 4
+  }
+]

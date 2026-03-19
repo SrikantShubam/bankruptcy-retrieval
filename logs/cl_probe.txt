@@ -1,0 +1,494 @@
+=== FISKER ===
+
+=== fisker_rd_first_day === count=14
+  [0] case=
+       desc=Declaration in Support // Declaration of John C. Didonato as Chief Restructuring Officer of the Debtors in Support of the Motion of Debtors for Entry 
+       pdf=True docket_id=68867176
+  [1] case=
+       desc=Motion For Sale of Property Free and Clear of Liens(FEE) // Motion of Debtors for Entry of an Order (I) Authorizing and Approving the Sale of Certain 
+       pdf=True docket_id=68867176
+  [2] case=
+       desc=Monthly Staffing Report for Filing Period June 17, 2024 through June 30, 2024 // First Monthly Staffing and Compensation Report of Huron Consulting Se
+       pdf=True docket_id=68867176
+  [3] case=
+       desc=Order (I) Authorizing and Approving the Sale of Certain of the Debtors' Assets Free and Clear of Liens, Claims, Encumbrances, and Interests, (II) Auth
+       pdf=True docket_id=68867176
+  [4] case=
+       desc=Motion For Sale of Property Free and Clear of Liens(FEE) // Motion of Debtors for Entry of an Order (I) Authorizing and Approving the Sale of Certain 
+       pdf=True docket_id=68867176
+
+=== fisker_rd_ch11 === count=88
+  [0] case=
+       desc=Amended Chapter 11 Combined Plan & Disclosure Statement // Notice of Filing of Second Amended Combined Disclosure Statement and Chapter 11 Plan of Liq
+       pdf=True docket_id=68867176
+  [1] case=
+       desc=Amended Chapter 11 Combined Plan & Disclosure Statement // Notice of Filing of Second Amended Combined Disclosure Statement and Chapter 11 Plan of Liq
+       pdf=True docket_id=68867176
+  [2] case=
+       desc=Amended Chapter 11 Combined Plan & Disclosure Statement // Notice of Filing of Second Amended Combined Disclosure Statement and Chapter 11 Plan of Liq
+       pdf=True docket_id=68867176
+  [3] case=
+       desc=Chapter 11 Voluntary Petition . Fee Amount $1738. Filed by Fisker Inc.. (Dehney, Robert) (Entered: 06/19/2024)
+       pdf=True docket_id=68867176
+  [4] case=
+       desc=ORDER re 5 Suggestion of Bankruptcy: IT IS HEREBY ORDERED that this action is STAYED pursuant to the provisions of 11 U.S.C. § 362 and ADMINISTRATIVEL
+       pdf=True docket_id=68218655
+
+=== fisker_r_ch11 === count=34
+  [0] case=Fisker Inc.
+       desc=
+       pdf=False docket_id=68867176
+  [1] case=Uvaydov v. Fisker
+       desc=
+       pdf=False docket_id=68218655
+  [2] case=In Re: Fisker Inc.
+       desc=
+       pdf=False docket_id=69273590
+  [3] case=Fisker Group Inc.
+       desc=
+       pdf=False docket_id=68863451
+  [4] case=Prelude Systems, Inc. v. Fisker Inc.
+       desc=
+       pdf=False docket_id=68533393
+
+=== fisker_rd_dip === count=31
+  [0] case=
+       desc=Order Extending Time to File (I) Schedules of Assets and Liabilities, (II) Schedules of Current Income and Expenditures, (III) Schedules of Executory 
+       pdf=True docket_id=68867176
+  [1] case=
+       desc=Interim Order Authorizing (I) Debtors to Pay Certain Prepetition Taxes, Governmental Assessments, and Fees and (II) Financial Institutions to Honor an
+       pdf=True docket_id=68867176
+  [2] case=
+       desc=Order Approving Procedures for the Retention and Compensation of Ordinary Course Professionals (related document(s)87, 325) Order Signed on 7/29/2024.
+       pdf=True docket_id=68867176
+  [3] case=
+       desc=Order Approving Procedures for the Retention and Compensation of Ordinary Course Professionals (related document(s)87, 325) Order Signed on 7/29/2024.
+       pdf=True docket_id=68867176
+  [4] case=
+       desc=Monthly Staffing Report for Filing Period June 17, 2024 through June 30, 2024 // First Monthly Staffing and Compensation Report of Huron Consulting Se
+       pdf=True docket_id=68867176
+
+=== TGI FRIDAYS ===
+
+=== tgi_rd_first_day === count=20
+  [0] case=
+       desc=Agenda for Hearing scheduled on 11/4/2024 filed by Debtor TGI Friday's Inc. (RE: related document(s)2 Motion for joint administration of cases 24-8006
+       pdf=True docket_id=69338898
+  [1] case=
+       desc=Motion to reject executory contract or unexpired lease Filed by Debtor TGI Friday's Inc. (O'Neil, Holland)
+       pdf=True docket_id=69338898
+  [2] case=
+       desc=Certificate of service re: Debtors Emergency Motion for Entry of an Order Directing Joint Administration of Their Chapter 11 Cases (Docket No. 2), Not
+       pdf=True docket_id=69338898
+  [3] case=
+       desc=Notice of hearing filed by Debtor TGI Friday's Inc. (RE: related document(s)2 Motion for joint administration of cases 24-80069, 24-80070, 24-80070, 2
+       pdf=True docket_id=69338898
+  [4] case=
+       desc=Non-individual Chapter 11 Voluntary Petition. Fee Amount $1738 Filed by TGI Friday's of Annapolis, Inc. Chapter 11 Plan due by 03/2/2025. Disclosure S
+       pdf=True docket_id=69338920
+
+=== tgi_rd_fridays_ch11 === count=18
+  [0] case=
+       desc=Notice of Possible Assumption and Assignment with Respect to Executory Contracts and Unexpired Leases of the Debtors filed by Debtor TGI Friday's Inc.
+       pdf=True docket_id=69338898
+  [1] case=
+       desc=Declaration re: /Declaration of Kyle Richter, Chief Restructuring Officer of the Debtors, in Support of the Debtors Chapter 11 Petitions and First Day
+       pdf=True docket_id=69338898
+  [2] case=
+       desc=Supplemental Order Approving (I) Bidding Procedures, the Sale Timeline, and the Form and Manner of Notice Thereof; (II) The Debtors Entry Into and Per
+       pdf=True docket_id=69338898
+  [3] case=
+       desc=Witness and Exhibit List on First Day Hearings (November 4, 2024) filed by Debtor TGI Friday's Inc. (RE: related document(s)2 Motion for joint adminis
+       pdf=True docket_id=69338898
+  [4] case=
+       desc=Chapter 11 plan filed by Debtor TGI Friday's Inc.. (O'Neil, Holland)
+       pdf=True docket_id=69338898
+
+=== tgi_r_friday === count=17
+  [0] case=TGI Friday's Inc.
+       desc=
+       pdf=False docket_id=69338898
+  [1] case=TGI Friday's of Annapolis, Inc.
+       desc=
+       pdf=False docket_id=69338920
+  [2] case=TGI Friday's Inc. - Adversary Proceeding
+       desc=
+       pdf=False docket_id=69362172
+  [3] case=Alexander E. Jones and Official Committee Of Unsecured Creditors - Adversary Pro
+       desc=
+       pdf=False docket_id=69387937
+  [4] case=T.G.I. Friday's of Washington County, Inc.
+       desc=
+       pdf=False docket_id=69338921
+
+=== tgi_r_fridays === count=5
+  [0] case=TGI Friday's Inc.
+       desc=
+       pdf=False docket_id=69338898
+  [1] case=SouthRock Capital Ltda.
+       desc=
+       pdf=False docket_id=68851522
+  [2] case=Silver Airways LLC
+       desc=
+       pdf=False docket_id=69505881
+  [3] case=World Professional Association for Transgender Health v. Commissioner Indiana De
+       desc=
+       pdf=False docket_id=69430353
+  [4] case=Steward Health Care System LLC and Plan Administrator Committee
+       desc=
+       pdf=False docket_id=68501909
+
+=== tgi_rd_broad === count=60
+  [0] case=
+       desc=Application to employ Ropes & Gray LLP as Attorney /Application of Debtors for Authority to Retain and Employ Ropes & Gray LLP as Attorneys for the De
+       pdf=True docket_id=69338898
+  [1] case=
+       desc=Application to employ Foley & Lardner LLP as Attorney /Debtors' Application for Entry of an Order Authorizing the Employment of Foley & Lardner LLP as
+       pdf=True docket_id=69338898
+  [2] case=
+       desc=Non-individual Chapter 11 Voluntary Petition. Fee Amount $1738 Filed by TGI Friday's of Annapolis, Inc. Chapter 11 Plan due by 03/2/2025. Disclosure S
+       pdf=True docket_id=69338920
+  [3] case=
+       desc=Chapter 11 plan filed by Debtor TGI Friday's Inc.. (O'Neil, Holland)
+       pdf=True docket_id=69338898
+  [4] case=
+       desc=Motion to reject executory contract or unexpired lease Filed by Debtor TGI Friday's Inc. (O'Neil, Holland)
+       pdf=True docket_id=69338898
+
+=== BUCA DI BEPPO ===
+
+=== buca_rd_first_day === count=2
+  [0] case=
+       desc=Motion for joint administration of cases 24-80058, 24-80059, 24-80060, 24-80061, 24-80062, 24-80063, 24-80064, 24-80065, 24-80066, 24-80067 Debtors' E
+       pdf=True docket_id=69013371
+  [1] case=
+       desc=Proof of Interest Filed by CHRISTOPHER DAVID COX (mms) (Entered: 12/19/2024)
+       pdf=True docket_id=69029570
+
+=== buca_rd_ch11 === count=17
+  [0] case=
+       desc=Non-individual Chapter 11 Voluntary Petition. Fee Amount $1738 Filed by BUCA C, LLC Chapter 11 Plan due by 12/3/2024. Disclosure Statement due by 12/3
+       pdf=True docket_id=69013371
+  [1] case=
+       desc=Motion for joint administration of cases 24-80058, 24-80059, 24-80060, 24-80061, 24-80062, 24-80063, 24-80064, 24-80065, 24-80066, 24-80067 Debtors' E
+       pdf=True docket_id=69013371
+  [2] case=
+       desc=
+       pdf=True docket_id=69013362
+  [3] case=
+       desc=
+       pdf=True docket_id=69013362
+  [4] case=
+       desc=
+       pdf=True docket_id=69013362
+
+=== buca_r_ch11 === count=13
+  [0] case=BUCA C, LLC
+       desc=
+       pdf=False docket_id=69013371
+  [1] case=BUCA Texas Restaurants, L.P.
+       desc=
+       pdf=False docket_id=69013362
+  [2] case=CAREMAX, INC.
+       desc=
+       pdf=False docket_id=69382898
+  [3] case=Akhtar v. Aggarwala
+       desc=
+       pdf=False docket_id=69150877
+  [4] case=White (ID 2000046191) v. Parks
+       desc=
+       pdf=False docket_id=68243787
+
+=== buca_r_beppo === count=4
+  [0] case=BUCA C, LLC
+       desc=
+       pdf=False docket_id=69013371
+  [1] case=United States v. Cambridge International Systems, Inc.
+       desc=
+       pdf=False docket_id=68440747
+  [2] case=BUCA Texas Restaurants, L.P.
+       desc=
+       pdf=False docket_id=69013362
+  [3] case=ConvergeOne Holdings, Inc.
+       desc=
+       pdf=False docket_id=68406966
+
+=== buca_r_llc === count=2
+  [0] case=BUCA C, LLC
+       desc=
+       pdf=False docket_id=69013371
+  [1] case=BUCA Texas Restaurants, L.P.
+       desc=
+       pdf=False docket_id=69013362
+
+=== CAREMAX ===
+
+=== caremax_rd_first_day === count=3
+  [0] case=
+       desc=Order granting motion (I) Authorizing the Debtors to file (A) A consolidated creditor matrix and (B) A consolidated list of 30 largest unsecured credi
+       pdf=True docket_id=69382898
+  [1] case=
+       desc=
+       pdf=True docket_id=69382916
+  [2] case=
+       desc=
+       pdf=True docket_id=68193715
+
+=== caremax_rd_ch11 === count=45
+  [0] case=
+       desc=Non-individual Chapter 11 Voluntary Petition. Fee Amount $1738 Filed by CAREMAX HOLDINGS, L.L.C. Chapter 11 Plan due by 03/17/2025. Disclosure Stateme
+       pdf=True docket_id=69382969
+  [1] case=
+       desc=Non-individual Chapter 11 Voluntary Petition. Fee Amount $1738 Filed by CAREMAX MEDICAL CENTER OF PEMBROKE PINES, L.L.C. Chapter 11 Plan due by 03/17/
+       pdf=True docket_id=69382934
+  [2] case=
+       desc=Amended chapter 11 plan filed by Debtor CAREMAX, INC. (RE: related document(s)18 Chapter 11 plan). (Califano, Thomas)
+       pdf=True docket_id=69382898
+  [3] case=
+       desc=Order granting complex chapter 11 treatment. Entered on 11/22/2024 (Rielly, Bill)
+       pdf=True docket_id=69382898
+  [4] case=
+       desc=Non-individual Chapter 11 Voluntary Petition. Fee Amount $1738 Filed by CAREMAX, INC. Chapter 11 Plan due by 03/17/2025. Disclosure Statement due by 0
+       pdf=True docket_id=69382898
+
+=== caremax_r_ch11 === count=11
+  [0] case=CAREMAX HOLDINGS, L.L.C.
+       desc=
+       pdf=False docket_id=69382969
+  [1] case=CAREMAX, INC.
+       desc=
+       pdf=False docket_id=69382898
+  [2] case=CareMax Medical Center of Pembroke Pines, L.L.C.
+       desc=
+       pdf=False docket_id=69382934
+  [3] case=CAREMAX MEDICAL CENTER OF EAST HIALEAH, L.L.C.
+       desc=
+       pdf=False docket_id=69382962
+  [4] case=CAREMAX MEDICAL CENTER OF NORTH MIAMI, L.L.C.
+       desc=
+       pdf=False docket_id=69382916
+
+=== DEALS WITH PARTIAL BUNDLES (need DIP) ===
+
+=== express_rd_first_day === count=664
+  [0] case=
+       desc=Motion for Joint Administration Filed by Express BNBS Fashion, LLC, Express Fashion Digital Services Costa Rica, S.R.L., Express Fashion Investments, 
+       pdf=True docket_id=68456681
+  [1] case=
+       desc=Motion for Joint Administration Filed by Express BNBS Fashion, LLC, Express Fashion Digital Services Costa Rica, S.R.L., Express Fashion Investments, 
+       pdf=True docket_id=68456662
+  [2] case=
+       desc=Response to First Day Declaration. Filed by UNITED STATES OF AMERICA C/O U.S. DEPARTMENT OF JUSTICE (Attachments: # 1 Exhibit "A" (Enforcement Petitio
+       pdf=True docket_id=69284081
+  [3] case=
+       desc=Certification of Counsel Regarding Exclusivity Order (related document(s)649, 705) Filed by Express, Inc.. (Attachments: # 1 Exhibit) (Yurkewicz, Mich
+       pdf=True docket_id=68456662
+  [4] case=
+       desc=Exhibit(s) // Notice of Revised Proposed Final Creditor Matrix Order (related document(s)9, 87) Filed by Express, Inc.. (Pacitti, Domenic) (Entered: 0
+       pdf=True docket_id=68456662
+
+=== express_rd_decl_support === count=5
+  [0] case=
+       desc=Affidavit/Declaration in Support of First Day Motion // Declaration in Support of Chapter 11 Petitions and First Day Motions Filed By Yield10 Bioscien
+       pdf=True docket_id=69444898
+  [1] case=
+       desc=Monthly Application for Compensation for the period to Filed by EXP OldCo Winddown, Inc.. Objections due by 3/6/2025. (Attachments: (1) Notice) (Pacit
+       pdf=True docket_id=68456662
+  [2] case=
+       desc=Final Application for Compensation for the period to Filed by EXP OldCo Winddown, Inc.. Hearing scheduled for 3/27/2025 at 09:30 AM at US Bankruptcy C
+       pdf=True docket_id=68456662
+  [3] case=
+       desc=Brief in Opposition to Motion Of Cipolla Defendants To Dismiss Plaintiff's Adversary Complaint Pursuant To Rule 7012 Of The Federal Rules Of Bankruptc
+       pdf=True docket_id=68283937
+  [4] case=
+       desc=COMPLAINT CLASS ACTION COMPLAINT AND DEMAND FOR JURY TRIAL against All Defendants. Filing fees $ 405.00 receipt number AFLSDC-17301225, filed by Sheng
+       pdf=True docket_id=68261002
+
+=== ll_flooring_rd_dip === count=11
+  [0] case=
+       desc=Motion to Continue Customer Programs Filed By LL Flooring Holdings, Inc. (Larkin, Joseph) (Entered: 08/11/2024)
+       pdf=True docket_id=69033856
+  [1] case=
+       desc=Affidavit/Declaration in Support of First Day Motion Declaration of Holly Etlin in Support of Chapter 11 Petitions and First Day Papers Filed By LL Fl
+       pdf=True docket_id=69033856
+  [2] case=
+       desc=Disclosure Statement for the Amended Joint Chapter 11 Plan of Liquidation for LL Flooring Holdings, Inc. and Its Affiliated Debtors (related document(
+       pdf=True docket_id=69033856
+  [3] case=
+       desc=Amended Chapter 11 Plan of Liquidation (related document(s)462) - Amended Joint Chapter 11 Plan of Liquidation for LL Flooring Holdings, Inc. and Its 
+       pdf=True docket_id=69033856
+  [4] case=
+       desc=Motion to Reject Lease or Executory Contract Motion of Debtors for Entry of an Order (I) Authorizing Debtors to (A) Reject Certain Unexpired Leases an
+       pdf=True docket_id=69033856
+
+=== ll_flooring_rd_dip2 === count=9
+  [0] case=
+       desc=Motion to Continue Customer Programs Filed By LL Flooring Holdings, Inc. (Larkin, Joseph) (Entered: 08/11/2024)
+       pdf=True docket_id=69033856
+  [1] case=
+       desc=Notice of Bar Date - Notice of Deadlines for the Filing of Proofs of Claim, Including Pursuant to Section 503(b)(9) of the Bankruptcy Code Filed by LL
+       pdf=True docket_id=69033856
+  [2] case=
+       desc=Motion to Reject Lease or Executory Contract Motion of Debtors for Entry of an Order (I) Authorizing Debtors to (A) Reject Certain Unexpired Leases an
+       pdf=True docket_id=69033856
+  [3] case=
+       desc=Amended Chapter 11 Plan of Liquidation (related document(s)462) - Amended Joint Chapter 11 Plan of Liquidation for LL Flooring Holdings, Inc. and Its 
+       pdf=True docket_id=69033856
+  [4] case=
+       desc=Final Order (I) Authorizing the Debtors to (A) Continue Using Existing Cash Management Systems, Bank Accounts, and Business Forms and (B) Implement Ch
+       pdf=True docket_id=69033856
+
+=== ll_flooring_rd_cash === count=13
+  [0] case=
+       desc=Motion to Continue Customer Programs Filed By LL Flooring Holdings, Inc. (Larkin, Joseph) (Entered: 08/11/2024)
+       pdf=True docket_id=69033856
+  [1] case=
+       desc=Notice of Bar Date - Notice of Deadlines for the Filing of Proofs of Claim, Including Pursuant to Section 503(b)(9) of the Bankruptcy Code Filed by LL
+       pdf=True docket_id=69033856
+  [2] case=
+       desc=Affidavit/Declaration in Support of First Day Motion Declaration of Holly Etlin in Support of Chapter 11 Petitions and First Day Papers Filed By LL Fl
+       pdf=True docket_id=69033856
+  [3] case=
+       desc=Amended Chapter 11 Plan of Liquidation (related document(s)462) - Amended Joint Chapter 11 Plan of Liquidation for LL Flooring Holdings, Inc. and Its 
+       pdf=True docket_id=69033856
+  [4] case=
+       desc=Motion to Reject Lease or Executory Contract Motion of Debtors for Entry of an Order (I) Authorizing Debtors to (A) Reject Certain Unexpired Leases an
+       pdf=True docket_id=69033856
+
+=== exactech_rd_dip === count=9
+  [0] case=
+       desc=Motion Regarding Chapter 11 First Day Motions - Motion of Debtors for Entry of Interim and Final Orders (I) Approving Notification and Hearing Procedu
+       pdf=True docket_id=69319026
+  [1] case=
+       desc=Declaration // Notice of Filing of the Ordinary Course Professional Declaration of ShultzLaw PC (related document(s)255) Filed by Exactech, Inc.. (Jus
+       pdf=True docket_id=69319026
+  [2] case=
+       desc=Chapter 11 Voluntary Petition . Fee Amount $1738. Filed by Exactech, Inc.. (Bartley, Ryan) (Entered: 10/29/2024)
+       pdf=True docket_id=69319026
+  [3] case=
+       desc=Motion for Relief from Stay (FEE) and Related Relief Under Section 362 of the Bankruptcy Code. Fee Amount $199. Filed by Selected Plaintiffs in In Re:
+       pdf=True docket_id=69319026
+  [4] case=
+       desc=Affidavit/Declaration in Support of First Day Motion - Declaration of Jesse York, Chief Restructuring Officer of Exactech, Inc. in Support of Debtors'
+       pdf=True docket_id=69319026
+
+=== exactech_rd_dip2 === count=6
+  [0] case=
+       desc=Chapter 11 Voluntary Petition . Fee Amount $1738. Filed by Exactech, Inc.. (Bartley, Ryan) (Entered: 10/29/2024)
+       pdf=True docket_id=69319026
+  [1] case=
+       desc=Affidavit/Declaration in Support of First Day Motion - Declaration of Jesse York, Chief Restructuring Officer of Exactech, Inc. in Support of Debtors'
+       pdf=True docket_id=69319026
+  [2] case=
+       desc=Adversary case 24-50297. Complaint by EXACTECH, INC., AD HOC GROUP OF PREPETITION FIRST LIEN LENDERS against JOINTMEDICA LIMITED, JOINTMEDICA INVESTME
+       pdf=True docket_id=69467179
+  [3] case=
+       desc=Chapter 11 Voluntary Petition . Fee Amount $1738. Filed by XpandOrtho, Inc.. (Bartley, Ryan) (Entered: 10/29/2024)
+       pdf=True docket_id=69319025
+  [4] case=
+       desc=Application to employ Ropes & Gray LLP as Attorney /Application of Debtors for Authority to Retain and Employ Ropes & Gray LLP as Attorneys for the De
+       pdf=True docket_id=69338898
+
+=== rue21_rd_dip === count=14
+  [0] case=
+       desc=Chapter 11 Voluntary Petition . Fee Amount $1738. Filed by New rue21, LLC. (Morton, Edmon) (Entered: 05/02/2024)
+       pdf=True docket_id=68493948
+  [1] case=
+       desc=Chapter 11 Voluntary Petition . Fee Amount $1738. Filed by New rue21 Intermediate, Inc.. (Morton, Edmon) (Entered: 05/02/2024)
+       pdf=True docket_id=68493949
+  [2] case=
+       desc=Chapter 11 Voluntary Petition . Fee Amount $1738. Filed by New rue21 Holdco, Inc.. (Morton, Edmon) (Entered: 05/02/2024)
+       pdf=True docket_id=68493951
+  [3] case=
+       desc=Affidavit/Declaration in Support of First Day Motion // Declaration of Michele Pascoe in Support of Debtors' Chapter 11 Petitions and First Day Motion
+       pdf=True docket_id=68493951
+  [4] case=
+       desc=Chapter 11 Voluntary Petition . Fee Amount $1738. Filed by New RSC, LLC. (Morton, Edmon) (Entered: 05/02/2024)
+       pdf=True docket_id=68493947
+
+=== rue21_rd_dip2 === count=10
+  [0] case=
+       desc=Chapter 11 Voluntary Petition . Fee Amount $1738. Filed by New rue21, LLC. (Morton, Edmon) (Entered: 05/02/2024)
+       pdf=True docket_id=68493948
+  [1] case=
+       desc=Chapter 11 Voluntary Petition . Fee Amount $1738. Filed by New rue21 Intermediate, Inc.. (Morton, Edmon) (Entered: 05/02/2024)
+       pdf=True docket_id=68493949
+  [2] case=
+       desc=Declaration of Joshua Abramson in Support of the Debtors' Motion for Entry of Interim and Final Orders (I) Authorizing the Debtors to Obtain Postpetit
+       pdf=True docket_id=68183678
+  [3] case=
+       desc=Chapter 11 Voluntary Petition . Fee Amount $1738. Filed by New rue21 Holdco, Inc.. (Morton, Edmon) (Entered: 05/02/2024)
+       pdf=True docket_id=68493951
+  [4] case=
+       desc=Chapter 11 Voluntary Petition . Fee Amount $1738. Filed by r21 Holdings, Inc.. (Morton, Edmon) (Entered: 05/02/2024)
+       pdf=True docket_id=68493950
+
+=== TRY DOCKET SEARCH (type=d) ===
+
+=== fisker_d === count=39
+  [0] case=Prelude Systems, Inc. v. Fisker Inc.
+       desc=
+       pdf=False docket_id=68533393
+  [1] case=Fisker Inc.
+       desc=
+       pdf=False docket_id=68867176
+  [2] case=Fisker Group Inc.
+       desc=
+       pdf=False docket_id=68863451
+  [3] case=Uvaydov v. Fisker
+       desc=
+       pdf=False docket_id=68218655
+  [4] case=In Re: Fisker Inc.
+       desc=
+       pdf=False docket_id=69273590
+
+=== tgi_d === count=34
+  [0] case=TGI Friday's Inc.
+       desc=
+       pdf=False docket_id=69338898
+  [1] case=TGI Friday's of Annapolis, Inc.
+       desc=
+       pdf=False docket_id=69338920
+  [2] case=TGI Friday's Inc. - Adversary Proceeding
+       desc=
+       pdf=False docket_id=69362172
+  [3] case=T.G.I. Friday's of Charles County, Inc.
+       desc=
+       pdf=False docket_id=69338910
+  [4] case=T.G.I. Friday's of Harford County, Inc.
+       desc=
+       pdf=False docket_id=69338908
+
+=== buca_d === count=13
+  [0] case=BUCA C, LLC
+       desc=
+       pdf=False docket_id=69013371
+  [1] case=BUCA Texas Restaurants, L.P.
+       desc=
+       pdf=False docket_id=69013362
+  [2] case=CAREMAX, INC.
+       desc=
+       pdf=False docket_id=69382898
+  [3] case=JTH Tax LLC v. Brown
+       desc=
+       pdf=False docket_id=69049003
+  [4] case=QuickVault, Inc. v. Broadcom Inc.
+       desc=
+       pdf=False docket_id=69005395
+
+=== caremax_d === count=11
+  [0] case=CAREMAX HOLDINGS, L.L.C.
+       desc=
+       pdf=False docket_id=69382969
+  [1] case=CareMax Medical Center of Pembroke Pines, L.L.C.
+       desc=
+       pdf=False docket_id=69382934
+  [2] case=CAREMAX MEDICAL CENTER OF EAST HIALEAH, L.L.C.
+       desc=
+       pdf=False docket_id=69382962
+  [3] case=CAREMAX MEDICAL CENTER OF NORTH MIAMI, L.L.C.
+       desc=
+       pdf=False docket_id=69382916
+  [4] case=CAREMAX, INC.
+       desc=
+       pdf=False docket_id=69382898

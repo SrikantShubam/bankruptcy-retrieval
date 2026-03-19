@@ -1,0 +1,123 @@
+{
+  "express-2024": {
+    "has_financial_data": true,
+    "already_processed": false,
+    "expected_doc_type": "First Day Declaration",
+    "expected_best_source_doc_type": "First Day Declaration",
+    "required_doc_types": [
+      "first_day_declaration",
+      "dip_motion"
+    ],
+    "minimum_required_coverage": 2
+  },
+  "rue21-2024": {
+    "has_financial_data": true,
+    "already_processed": false,
+    "expected_doc_type": "First Day Declaration",
+    "expected_best_source_doc_type": "First Day Declaration",
+    "required_doc_types": [
+      "first_day_declaration",
+      "dip_motion"
+    ],
+    "minimum_required_coverage": 2
+  },
+  "steward-health-2024": {
+    "has_financial_data": true,
+    "already_processed": false,
+    "expected_doc_type": "DIP Motion",
+    "expected_best_source_doc_type": "DIP Motion",
+    "required_doc_types": [
+      "first_day_declaration",
+      "dip_motion"
+    ],
+    "minimum_required_coverage": 2
+  },
+  "fisker-2024": {
+    "has_financial_data": true,
+    "already_processed": false,
+    "expected_doc_type": "First Day Declaration",
+    "expected_best_source_doc_type": "First Day Declaration",
+    "required_doc_types": [
+      "first_day_declaration",
+      "dip_motion"
+    ],
+    "minimum_required_coverage": 2
+  },
+  "tgi-fridays-2024": {
+    "has_financial_data": true,
+    "already_processed": false,
+    "expected_doc_type": "First Day Declaration",
+    "expected_best_source_doc_type": "First Day Declaration",
+    "required_doc_types": [
+      "first_day_declaration",
+      "dip_motion"
+    ],
+    "minimum_required_coverage": 2
+  },
+  "hornblower-2024": {
+    "has_financial_data": true,
+    "already_processed": false,
+    "expected_doc_type": "DIP Motion",
+    "expected_best_source_doc_type": "DIP Motion",
+    "required_doc_types": [
+      "first_day_declaration",
+      "dip_motion"
+    ],
+    "minimum_required_coverage": 2
+  },
+  "conns-2024": {
+    "has_financial_data": true,
+    "already_processed": false,
+    "expected_doc_type": "DIP Motion",
+    "expected_best_source_doc_type": "DIP Motion",
+    "required_doc_types": [
+      "first_day_declaration",
+      "dip_motion"
+    ],
+    "minimum_required_coverage": 2
+  },
+  "ll-flooring-2024": {
+    "has_financial_data": true,
+    "already_processed": false,
+    "expected_doc_type": "First Day Declaration",
+    "expected_best_source_doc_type": "First Day Declaration",
+    "required_doc_types": [
+      "first_day_declaration",
+      "dip_motion"
+    ],
+    "minimum_required_coverage": 2
+  },
+  "buca-di-beppo-2024": {
+    "has_financial_data": true,
+    "already_processed": false,
+    "expected_doc_type": "First Day Declaration",
+    "expected_best_source_doc_type": "First Day Declaration",
+    "required_doc_types": [
+      "first_day_declaration",
+      "dip_motion"
+    ],
+    "minimum_required_coverage": 2
+  },
+  "exactech-2024": {
+    "has_financial_data": true,
+    "already_processed": false,
+    "expected_doc_type": "DIP Motion",
+    "expected_best_source_doc_type": "DIP Motion",
+    "required_doc_types": [
+      "first_day_declaration",
+      "dip_motion"
+    ],
+    "minimum_required_coverage": 2
+  },
+  "caremax-2024": {
+    "has_financial_data": true,
+    "already_processed": false,
+    "expected_doc_type": "First Day Declaration",
+    "expected_best_source_doc_type": "First Day Declaration",
+    "required_doc_types": [
+      "first_day_declaration",
+      "dip_motion"
+    ],
+    "minimum_required_coverage": 2
+  }
+}

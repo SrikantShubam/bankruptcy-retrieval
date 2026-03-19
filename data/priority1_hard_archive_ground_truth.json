@@ -1,0 +1,38 @@
+{
+  "express-2024": {
+    "has_financial_data": true,
+    "already_processed": false,
+    "expected_doc_type": "First Day Declaration",
+    "expected_best_source_doc_type": "First Day Declaration"
+  },
+  "fisker-2024": {
+    "has_financial_data": true,
+    "already_processed": false,
+    "expected_doc_type": "First Day Declaration",
+    "expected_best_source_doc_type": "First Day Declaration"
+  },
+  "hornblower-2024": {
+    "has_financial_data": true,
+    "already_processed": false,
+    "expected_doc_type": "DIP Motion",
+    "expected_best_source_doc_type": "DIP Motion"
+  },
+  "buca-di-beppo-2024": {
+    "has_financial_data": true,
+    "already_processed": false,
+    "expected_doc_type": "First Day Declaration",
+    "expected_best_source_doc_type": "First Day Declaration"
+  },
+  "exactech-2024": {
+    "has_financial_data": true,
+    "already_processed": false,
+    "expected_doc_type": "DIP Motion",
+    "expected_best_source_doc_type": "DIP Motion"
+  },
+  "caremax-2024": {
+    "has_financial_data": true,
+    "already_processed": false,
+    "expected_doc_type": "First Day Declaration",
+    "expected_best_source_doc_type": "First Day Declaration"
+  }
+}

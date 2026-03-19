@@ -1,0 +1,207 @@
+{
+  "model": "meta/llama-3.3-70b-instruct",
+  "deals_evaluated": 9,
+  "sufficient_for_v4_count": 0,
+  "sufficient_for_critical_fields_count": 1,
+  "missing_doc_likely_exists_count": 9,
+  "deals": [
+    {
+      "deal_id": "caremax-2024",
+      "documents_reviewed": 1,
+      "available_doc_types": [
+        "first_day_declaration"
+      ],
+      "sufficient_for_v4": false,
+      "sufficient_for_critical_fields": false,
+      "missing_doc_likely_exists": true,
+      "missing_doc_type": "dip_motion",
+      "likely_missing_reason": "The document bundle is missing a DIP motion which is crucial for understanding the debtor-in-possession financing facility.",
+      "critical_fields_supported": [],
+      "critical_fields_blocked": [
+        "total_leverage",
+        "add_backs_percent",
+        "covenant_lite",
+        "largest_customer_percent"
+      ],
+      "verdict": "Insufficient",
+      "notes": "The first day declaration provides some information about the company's financial situation and restructuring plans, but it lacks specific details about the financing and capital structure, making it insufficient for a reliable v4-style extraction."
+    },
+    {
+      "deal_id": "conns-2024",
+      "documents_reviewed": 3,
+      "available_doc_types": [
+        "first_day_declaration",
+        "dip_motion",
+        "other_supporting"
+      ],
+      "sufficient_for_v4": false,
+      "sufficient_for_critical_fields": false,
+      "missing_doc_likely_exists": true,
+      "missing_doc_type": "credit_agreement",
+      "likely_missing_reason": "Insufficient information about total leverage, add_backs_percent, covenant_lite, and largest_customer_percent",
+      "critical_fields_supported": [],
+      "critical_fields_blocked": [
+        "total_leverage",
+        "add_backs_percent",
+        "covenant_lite",
+        "largest_customer_percent"
+      ],
+      "verdict": "Insufficient documentation",
+      "notes": "The provided documents do not contain sufficient information to support the critical fields required for a reliable v4-style extraction of financing and capital-structure facts."
+    },
+    {
+      "deal_id": "exactech-2024",
+      "documents_reviewed": 2,
+      "available_doc_types": [
+        "first_day_declaration",
+        "other_supporting"
+      ],
+      "sufficient_for_v4": false,
+      "sufficient_for_critical_fields": false,
+      "missing_doc_likely_exists": true,
+      "missing_doc_type": "dip_motion",
+      "likely_missing_reason": "Insufficient information for reliable v4-style extraction of financing and capital-structure facts",
+      "critical_fields_supported": [],
+      "critical_fields_blocked": [
+        "total_leverage",
+        "add_backs_percent",
+        "covenant_lite",
+        "largest_customer_percent"
+      ],
+      "verdict": "Insufficient",
+      "notes": "The provided documents do not contain sufficient information to support the critical fields, and a DIP motion is likely missing, which is necessary for a reliable v4-style extraction."
+    },
+    {
+      "deal_id": "express-2024",
+      "documents_reviewed": 1,
+      "available_doc_types": [
+        "dip_motion"
+      ],
+      "sufficient_for_v4": false,
+      "sufficient_for_critical_fields": false,
+      "missing_doc_likely_exists": true,
+      "missing_doc_type": "first_day_declaration",
+      "likely_missing_reason": "Insufficient information for total_leverage, add_backs_percent, covenant_lite, and largest_customer_percent",
+      "critical_fields_supported": [],
+      "critical_fields_blocked": [
+        "total_leverage",
+        "add_backs_percent",
+        "covenant_lite",
+        "largest_customer_percent"
+      ],
+      "verdict": "Insufficient documentation",
+      "notes": "The provided dip_motion document does not contain sufficient information to support the critical fields, and a first_day_declaration document is likely missing, which could provide additional necessary information."
+    },
+    {
+      "deal_id": "fisker-2024",
+      "documents_reviewed": 1,
+      "available_doc_types": [
+        "other_supporting"
+      ],
+      "sufficient_for_v4": false,
+      "sufficient_for_critical_fields": false,
+      "missing_doc_likely_exists": true,
+      "missing_doc_type": "first_day_declaration",
+      "likely_missing_reason": "The document references the 'DiDonato First Day Declaration' which is not provided in the bundle, and is likely necessary for a complete understanding of the case.",
+      "critical_fields_supported": [],
+      "critical_fields_blocked": [
+        "total_leverage",
+        "add_backs_percent",
+        "covenant_lite",
+        "largest_customer_percent"
+      ],
+      "verdict": "Insufficient",
+      "notes": "The provided document is an other_supporting document and does not contain sufficient information to support the critical fields. The 'DiDonato First Day Declaration' is referenced but not provided, and is likely necessary for a complete understanding of the case."
+    },
+    {
+      "deal_id": "hornblower-2024",
+      "documents_reviewed": 2,
+      "available_doc_types": [
+        "first_day_declaration",
+        "dip_motion"
+      ],
+      "sufficient_for_v4": false,
+      "sufficient_for_critical_fields": true,
+      "missing_doc_likely_exists": true,
+      "missing_doc_type": "credit_agreement",
+      "likely_missing_reason": "lack of detailed financial information",
+      "critical_fields_supported": [
+        "total_leverage",
+        "covenant_lite",
+        "largest_customer_percent"
+      ],
+      "critical_fields_blocked": [
+        "add_backs_percent"
+      ],
+      "verdict": "insufficient for v4",
+      "notes": "while the provided documents offer some insights into the company's financial situation and restructuring efforts, they lack specific details necessary for a reliable v4-style extraction, particularly regarding add_backs_percent"
+    },
+    {
+      "deal_id": "ll-flooring-2024",
+      "documents_reviewed": 1,
+      "available_doc_types": [
+        "first_day_declaration"
+      ],
+      "sufficient_for_v4": false,
+      "sufficient_for_critical_fields": false,
+      "missing_doc_likely_exists": true,
+      "missing_doc_type": "dip_motion",
+      "likely_missing_reason": "The first day declaration mentions a DIP Facility, but the details of the facility are likely to be found in the DIP motion, which is not present in the bundle.",
+      "critical_fields_supported": [],
+      "critical_fields_blocked": [
+        "total_leverage",
+        "add_backs_percent",
+        "covenant_lite",
+        "largest_customer_percent"
+      ],
+      "verdict": "Insufficient",
+      "notes": "The first day declaration provides some background information on the company and its financial situation, but it lacks specific details on the critical fields. The absence of the DIP motion, which is likely to contain important information on the company's financing and capital structure, makes it difficult to support the critical fields."
+    },
+    {
+      "deal_id": "rue21-2024",
+      "documents_reviewed": 3,
+      "available_doc_types": [
+        "first_day_declaration",
+        "cash_collateral_motion",
+        "other_supporting"
+      ],
+      "sufficient_for_v4": false,
+      "sufficient_for_critical_fields": false,
+      "missing_doc_likely_exists": true,
+      "missing_doc_type": "dip_motion",
+      "likely_missing_reason": "Insufficient information for reliable v4-style extraction",
+      "critical_fields_supported": [],
+      "critical_fields_blocked": [
+        "total_leverage",
+        "add_backs_percent",
+        "covenant_lite",
+        "largest_customer_percent"
+      ],
+      "verdict": "Insufficient documentation",
+      "notes": "The provided documents do not contain sufficient information to support the critical fields, and a DIP motion is likely missing, which is necessary for a reliable v4-style extraction."
+    },
+    {
+      "deal_id": "steward-health-2024",
+      "documents_reviewed": 3,
+      "available_doc_types": [
+        "first_day_declaration",
+        "dip_motion",
+        "other_supporting"
+      ],
+      "sufficient_for_v4": false,
+      "sufficient_for_critical_fields": false,
+      "missing_doc_likely_exists": true,
+      "missing_doc_type": "credit_agreement",
+      "likely_missing_reason": "Insufficient information about total leverage, add_backs_percent, covenant_lite, and largest_customer_percent",
+      "critical_fields_supported": [],
+      "critical_fields_blocked": [
+        "total_leverage",
+        "add_backs_percent",
+        "covenant_lite",
+        "largest_customer_percent"
+      ],
+      "verdict": "Insufficient documentation",
+      "notes": "The provided documents do not contain sufficient information to support the critical fields, and a credit agreement document is likely missing."
+    }
+  ]
+}

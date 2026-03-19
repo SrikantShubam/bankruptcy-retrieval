@@ -1,0 +1,81 @@
+[
+  {
+    "deal_id": "express-2024",
+    "company_name": "Express, Inc.",
+    "filing_year": 2024,
+    "court": "D. Del.",
+    "chapter": 11,
+    "already_processed": false,
+    "claims_agent": null,
+    "target_doc_types": ["First Day Declaration", "DIP Motion"],
+    "best_source_doc_type": "First Day Declaration",
+    "acceptable_supporting_docs": ["DIP Motion", "Cash Collateral Motion"],
+    "hardness_reason": "Retail first-day docket typically includes multiple near-match PDFs; the declaration is usually a better source than operational motions."
+  },
+  {
+    "deal_id": "fisker-2024",
+    "company_name": "Fisker, Inc.",
+    "filing_year": 2024,
+    "court": "D. Del.",
+    "chapter": 11,
+    "already_processed": false,
+    "claims_agent": null,
+    "target_doc_types": ["First Day Declaration", "DIP Motion"],
+    "best_source_doc_type": "First Day Declaration",
+    "acceptable_supporting_docs": ["DIP Motion", "Cash Management Motion"],
+    "hardness_reason": "Automotive cases tend to have many high-signal motions and exhibits; picking the declaration over procedural financing papers is non-trivial."
+  },
+  {
+    "deal_id": "hornblower-2024",
+    "company_name": "Hornblower Group, Inc.",
+    "filing_year": 2024,
+    "court": "S.D. Tex.",
+    "chapter": 11,
+    "already_processed": false,
+    "claims_agent": null,
+    "target_doc_types": ["First Day Declaration", "DIP Motion"],
+    "best_source_doc_type": "DIP Motion",
+    "acceptable_supporting_docs": ["First Day Declaration", "Interim DIP Order"],
+    "hardness_reason": "Travel and services debt structures are frequently clearest in the DIP package rather than the first narrative declaration."
+  },
+  {
+    "deal_id": "buca-di-beppo-2024",
+    "company_name": "Buca C, LLC",
+    "filing_year": 2024,
+    "court": "N.D. Tex.",
+    "chapter": 11,
+    "already_processed": false,
+    "claims_agent": null,
+    "search_aliases": ["Buca di Beppo"],
+    "target_doc_types": ["First Day Declaration", "DIP Motion"],
+    "best_source_doc_type": "First Day Declaration",
+    "acceptable_supporting_docs": ["DIP Motion", "Cash Management Motion"],
+    "hardness_reason": "Smaller restaurant cases can bury the exact declaration under routine first-day operational motions."
+  },
+  {
+    "deal_id": "exactech-2024",
+    "company_name": "Exactech, Inc.",
+    "filing_year": 2024,
+    "court": "D. Del.",
+    "chapter": 11,
+    "already_processed": false,
+    "claims_agent": null,
+    "target_doc_types": ["First Day Declaration", "DIP Motion"],
+    "best_source_doc_type": "DIP Motion",
+    "acceptable_supporting_docs": ["First Day Declaration", "Interim DIP Order"],
+    "hardness_reason": "Medical-device cases often require selecting financing-specific papers over broader case-background filings."
+  },
+  {
+    "deal_id": "caremax-2024",
+    "company_name": "CareMax, Inc.",
+    "filing_year": 2024,
+    "court": "N.D. Tex.",
+    "chapter": 11,
+    "already_processed": false,
+    "claims_agent": null,
+    "target_doc_types": ["First Day Declaration", "DIP Motion"],
+    "best_source_doc_type": "First Day Declaration",
+    "acceptable_supporting_docs": ["DIP Motion", "Cash Collateral Motion"],
+    "hardness_reason": "Healthcare cases frequently split narrative distress detail and financing detail across separate PDFs, making source ranking harder."
+  }
+]
