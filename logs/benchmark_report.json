@@ -1,0 +1,41 @@
+{
+  "TP": 6,
+  "FP": 0,
+  "FN": 1,
+  "TN": 3,
+  "tp_deal_ids": [
+    "wework-2023",
+    "rite-aid-2023",
+    "blockfi-2022",
+    "bed-bath-beyond-2023",
+    "yellow-corp-2023",
+    "svb-financial-2023"
+  ],
+  "fp_deal_ids": [],
+  "fn_deal_ids": [
+    "talen-energy-2023"
+  ],
+  "tn_deal_ids": [
+    "mitchells-butlers-2023",
+    "kidoz-2023",
+    "medical-decoy-c"
+  ],
+  "precision": 1.0,
+  "recall": 0.8571,
+  "f1_score": 0.9231,
+  "coverage": 0.6,
+  "decoy_filter_rate": 1.0,
+  "api_efficiency": 0.088235,
+  "infra_failed": 0,
+  "total_api_calls": 68,
+  "total_llm_gatekeeper_calls": 8,
+  "total_runtime_seconds": 121.12,
+  "deals_total": 10,
+  "deals_active": 10,
+  "deals_already_processed": 0,
+  "unclassified": 0,
+  "true_positives": 6,
+  "false_positives": 0,
+  "false_negatives": 1,
+  "true_negatives": 3
+}
